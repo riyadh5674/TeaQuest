@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#101b16">
+    <meta name="description" content="TEAQUEST — A pixel-powered tea adventure.">
+
+    <title>TEAQUEST — Pixel Tea Company</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- =========================================================
+     GLOBAL EFFECTS
+========================================================= -->
+
+<div id="screenFlash"></div>
+<div id="toastContainer"></div>
+
+<div id="levelUpOverlay">
+    <div class="level-up-content">
+        <span class="level-up-label">LEVEL UP</span>
+        <strong id="levelUpNumber">1</strong>
+    </div>
+</div>
+
+<div class="ambient-layer">
+    <span class="pixel-star star-1"></span>
+    <span class="pixel-star star-2"></span>
+    <span class="pixel-star star-3"></span>
+    <span class="pixel-star star-4"></span>
+    <span class="pixel-star star-5"></span>
+</div>
+
+<!-- =========================================================
+     NAVIGATION
+========================================================= -->
+
+<header class="topbar">
+
+    <a href="#home" class="brand" data-page="home">
+        <div class="brand-icon">🍃</div>
+
+        <div>
+            <span class="brand-main">TEAQUEST</span>
+            <small>BREW YOUR ADVENTURE</small>
+        </div>
+    </a>
+
+    <nav class="desktop-nav">
+
+        <button class="nav-link active" data-page="home">
+            HOME
+        </button>
+
+        <button class="nav-link" data-page="shop">
+            SHOP
+        </button>
+
+        <button class="nav-link" data-page="codex">
+            CODEX
+        </button>
+
+        <button class="nav-link" data-page="about">
+            LORE
+        </button>
+
+        <button class="nav-link" data-page="contact">
+            CONTACT
+        </button>
+
+    </nav>
+
+    <div class="nav-actions">
+
+        <button class="icon-button" id="themeButton" title="Change world">
+            ☀
+        </button>
+
+        <button class="icon-button" id="favoritesButton">
+            ♥
+            <span class="badge" id="favoriteCount">0</span>
+        </button>
+
+        <button class="icon-button" id="cartButton">
+            🛒
+            <span class="badge" id="cartCount">0</span>
+        </button>
+
+        <button class="account-button" id="accountButton">
+            <span>♟</span>
+            <span id="accountLabel">PLAYER</span>
+        </button>
+
+        <button class="mobile-menu-button" id="mobileMenuButton">
+            ☰
+        </button>
+
+    </div>
+
+</header>
+
+<!-- =========================================================
+     MOBILE NAV
+========================================================= -->
+
+<div class="mobile-nav" id="mobileNav">
+
+    <button data-page="home">HOME</button>
+    <button data-page="shop">SHOP</button>
+    <button data-page="codex">CODEX</button>
+    <button data-page="about">LORE</button>
+    <button data-page="contact">CONTACT</button>
+
+</div>
+
+<main>
+
+<!-- =========================================================
+     HOME PAGE
+========================================================= -->
+
+<section class="page active-page" id="home">
+
+    <div class="hero">
+
+        <div class="hero-grid"></div>
+
+        <div class="cloud cloud-one"></div>
+        <div class="cloud cloud-two"></div>
+
+        <div class="hero-content">
+
+            <div class="quest-label">
+                <span class="blink-dot"></span>
+                NEW QUEST AVAILABLE
+            </div>
+
+            <h1>
+                ENTER THE<br>
+                <span>TEA REALM</span>
+            </h1>
+
+            <p class="hero-description">
+                Handcrafted tea for explorers, builders,
+                dreamers and late-night pixel warriors.
+            </p>
+
+            <div class="hero-buttons">
+
+                <button class="pixel-button primary" data-page="shop">
+                    <span>START BREWING</span>
+                    <b>→</b>
+                </button>
+
+                <button class="pixel-button secondary" id="randomTeaButton">
+                    🎲 RANDOM TEA
+                </button>
+
+                <button class="pixel-button secondary" id="teaOracleButton">
+                    🔮 TEA ORACLE
+                </button>
+
+            </div>
+
+            <div class="hero-stats">
+
+                <div>
+                    <strong>42+</strong>
+                    <span>TEA LOOT</span>
+                </div>
+
+                <div>
+                    <strong>8K</strong>
+                    <span>BREWERS</span>
+                </div>
+
+                <div>
+                    <strong>99%</strong>
+                    <span>HAPPINESS</span>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="hero-character">
+
+            <div class="pixel-tree tree-back"></div>
+            <div class="pixel-tree tree-front"></div>
+
+            <div class="tea-house">
+
+                <div class="house-roof"></div>
+
+                <div class="house-body">
+
+                    <div class="window">
+                        <span></span>
+                    </div>
+
+                    <div class="door"></div>
+
+                </div>
+
+                <div class="tea-sign">TEA</div>
+
+            </div>
+
+            <div class="steam steam-1">·</div>
+            <div class="steam steam-2">·</div>
+            <div class="steam steam-3">·</div>
+
+        </div>
+
+    </div>
+
+
+    <!-- FEATURED TEA -->
+
+    <div class="section-container">
+
+        <div class="section-heading">
+
+            <div>
+                <span class="eyebrow">◆ RARE DROPS</span>
+                <h2>FEATURED BREWS</h2>
+            </div>
+
+            <button class="text-button" data-page="shop">
+                VIEW ALL →
+            </button>
+
+        </div>
+
+        <div class="product-grid" id="featuredProducts"></div>
+
+    </div>
+
+
+    <!-- WORLD SECTION -->
+
+    <section class="world-section">
+
+        <div class="world-copy">
+
+            <span class="eyebrow">THE TEAQUEST WORLD</span>
+
+            <h2>
+                EVERY CUP<br>
+                HAS A STORY.
+            </h2>
+
+            <p>
+                Travel from misty mountain gardens to ancient tea forests.
+                Collect legendary leaves, unlock new brews and build your
+                ultimate tea inventory.
+            </p>
+
+            <button class="pixel-button primary" data-page="about">
+                EXPLORE THE LORE
+            </button>
+
+        </div>
+
+        <div class="pixel-map">
+
+            <div class="map-path"></div>
+
+            <button class="map-node node-one">
+                <span>1</span>
+                <small>FOREST</small>
+            </button>
+
+            <button class="map-node node-two">
+                <span>2</span>
+                <small>MOUNTAIN</small>
+            </button>
+
+            <button class="map-node node-three">
+                <span>3</span>
+                <small>VALLEY</small>
+            </button>
+
+            <button class="map-node node-four locked">
+                <span>?</span>
+                <small>LOCKED</small>
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- REVIEWS -->
+
+    <section class="reviews-section">
+
+        <div class="section-heading center">
+
+            <div>
+                <span class="eyebrow">PLAYER REVIEWS</span>
+                <h2>THE BREWERS SPEAK</h2>
+            </div>
+
+        </div>
+
+        <div class="review-grid">
+
+            <article class="review-card">
+                <div class="stars">★★★★★</div>
+                <p>
+                    "This feels like ordering tea from inside a tiny RPG.
+                    Somehow I love it."
+                </p>
+                <strong>— PIXELMAGE</strong>
+            </article>
+
+            <article class="review-card">
+                <div class="stars">★★★★★</div>
+                <p>
+                    "The Forest Mint became my morning ritual.
+                    Absolute S-tier brew."
+                </p>
+                <strong>— LUNARFOX</strong>
+            </article>
+
+            <article class="review-card">
+                <div class="stars">★★★★★</div>
+                <p>
+                    "Beautiful packaging, great flavor and the website
+                    is ridiculously fun."
+                </p>
+                <strong>— TEA_WIZARD</strong>
+            </article>
+
+        </div>
+
+    </section>
+
+</section>
+
+
+<!-- =========================================================
+     SHOP PAGE
+========================================================= -->
+
+<section class="page" id="shop">
+
+    <div class="page-header">
+
+        <div>
+            <span class="eyebrow">TEA INVENTORY</span>
+            <h1>THE MARKETPLACE</h1>
+            <p>Choose your next legendary brew.</p>
+        </div>
+
+        <div class="shop-search">
+
+            <span>⌕</span>
+
+            <input
+                id="searchInput"
+                type="search"
+                placeholder="Search tea..."
+            >
+
+        </div>
+
+    </div>
+
+
+    <div class="shop-controls">
+
+        <div class="filter-buttons">
+
+            <button class="filter-button active" data-category="all">
+                ALL
+            </button>
+
+            <button class="filter-button" data-category="green">
+                🌿 GREEN
+            </button>
+
+            <button class="filter-button" data-category="black">
+                🔥 BLACK
+            </button>
+
+            <button class="filter-button" data-category="herbal">
+                🌸 HERBAL
+            </button>
+
+            <button class="filter-button" data-category="special">
+                💎 SPECIAL
+            </button>
+
+        </div>
+
+        <select id="sortSelect">
+            <option value="featured">Featured</option>
+            <option value="low">Price: Low → High</option>
+            <option value="high">Price: High → Low</option>
+            <option value="rating">Highest Rated</option>
+        </select>
+
+    </div>
+
+    <div class="product-grid large" id="shopProducts"></div>
+
+</section>
+
+
+<!-- =========================================================
+     TEA CODEX PAGE
+========================================================= -->
+
+<section class="page" id="codex">
+
+    <div class="page-header">
+
+        <div>
+            <span class="eyebrow">COLLECTION</span>
+            <h1>TEA CODEX</h1>
+            <p>Every tea you discover is recorded here forever.</p>
+        </div>
+
+        <div class="codex-progress" id="codexProgress">
+            [ 0 / 0 DISCOVERED ]
+        </div>
+
+    </div>
+
+    <div class="codex-grid" id="codexGrid"></div>
+
+</section>
+
+
+<!-- =========================================================
+     ABOUT / LORE PAGE
+========================================================= -->
+
+<section class="page" id="about">
+
+    <div class="page-header">
+        <span class="eyebrow">QUEST LOG</span>
+        <h1>THE LORE OF TEAQUEST</h1>
+    </div>
+
+    <div class="lore-hero">
+
+        <div class="lore-emblem">
+            🍵
+        </div>
+
+        <div>
+            <span class="eyebrow">EST. 2026</span>
+
+            <h2>
+                WE DON'T JUST<br>
+                SELL TEA.
+            </h2>
+
+            <p>
+                We create tiny moments of escape.
+                Every leaf is selected like a rare game item,
+                every blend is crafted like a potion and every
+                cup is an invitation to slow down.
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="lore-cards">
+
+        <article>
+            <span>01</span>
+            <h3>SELECT</h3>
+            <p>We source leaves from carefully selected growing regions.</p>
+        </article>
+
+        <article>
+            <span>02</span>
+            <h3>CRAFT</h3>
+            <p>Our blends are designed for balance, aroma and character.</p>
+        </article>
+
+        <article>
+            <span>03</span>
+            <h3>QUEST</h3>
+            <p>Your tea arrives ready for the next chapter of your day.</p>
+        </article>
+
+    </div>
+
+
+    <div class="stats-panel">
+
+        <div>
+            <strong>8,421</strong>
+            <span>BREWERS</span>
+        </div>
+
+        <div>
+            <strong>47</strong>
+            <span>BLENDS</span>
+        </div>
+
+        <div>
+            <strong>19</strong>
+            <span>REGIONS</span>
+        </div>
+
+        <div>
+            <strong>4.9</strong>
+            <span>RATING</span>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     CONTACT PAGE
+========================================================= -->
+
+<section class="page" id="contact">
+
+    <div class="page-header">
+        <span class="eyebrow">SEND A SIGNAL</span>
+        <h1>CONTACT THE GUILD</h1>
+        <p>Need help with an order? We're listening.</p>
+    </div>
+
+    <div class="contact-layout">
+
+        <form class="contact-form" id="contactForm">
+
+            <label>
+                PLAYER NAME
+                <input required type="text" id="contactName">
+            </label>
+
+            <label>
+                EMAIL
+                <input required type="email" id="contactEmail">
+            </label>
+
+            <label>
+                MESSAGE
+                <textarea required id="contactMessage" rows="7"></textarea>
+            </label>
+
+            <button class="pixel-button primary" type="submit">
+                SEND MESSAGE →
+            </button>
+
+        </form>
+
+        <div class="contact-card">
+
+            <div class="contact-icon">✉</div>
+
+            <h2>GUILD HQ</h2>
+
+            <p>
+                Somewhere between a tea forest
+                and a cozy desk.
+            </p>
+
+            <div class="contact-line">
+                <span>EMAIL</span>
+                <strong>hello@teaquest.test</strong>
+            </div>
+
+            <div class="contact-line">
+                <span>HOURS</span>
+                <strong>09:00 — 18:00</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     PROFILE PAGE
+========================================================= -->
+
+<section class="page" id="profile">
+
+    <div class="page-header">
+        <span class="eyebrow">PLAYER PROFILE</span>
+        <h1 id="profileTitle">YOUR INVENTORY</h1>
+    </div>
+
+    <div class="profile-card">
+
+        <div class="avatar-large" id="profileAvatar">
+            ♟
+        </div>
+
+        <div class="profile-info">
+
+            <span class="eyebrow">PLAYER</span>
+
+            <h2 id="profileName">Guest Brewer</h2>
+
+            <p id="profileEmail">Not logged in</p>
+
+            <span class="level-badge" id="profileLevel">LEVEL 1</span>
+
+            <div class="xp-bar">
+
+                <div class="xp-progress" id="xpProgress"></div>
+
+            </div>
+
+            <small id="xpText">0 / 100 XP</small>
+
+        </div>
+
+        <button class="pixel-button secondary" id="logoutButton">
+            LOG OUT
+        </button>
+
+    </div>
+
+
+    <div class="orders-section">
+
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">QUEST BOARD</span>
+                <h2>ACTIVE QUESTS</h2>
+            </div>
+        </div>
+
+        <div id="questList" class="quest-list"></div>
+
+    </div>
+
+
+    <div class="orders-section">
+
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">HALL OF FAME</span>
+                <h2>ACHIEVEMENTS</h2>
+            </div>
+        </div>
+
+        <div id="achievementList" class="achievement-grid"></div>
+
+    </div>
+
+
+    <div class="orders-section">
+
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">QUEST HISTORY</span>
+                <h2>YOUR ORDERS</h2>
+            </div>
+        </div>
+
+        <div id="customerOrders" class="orders-list"></div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     ADMIN DASHBOARD
+========================================================= -->
+
+<section class="page" id="admin">
+
+    <div class="page-header">
+
+        <div>
+            <span class="eyebrow">GUILD MASTER MODE</span>
+            <h1>ADMIN COMMAND CENTER</h1>
+        </div>
+
+        <div class="admin-status">
+            ● SYSTEM ONLINE
+        </div>
+
+    </div>
+
+
+    <div class="admin-stats">
+
+        <div class="admin-stat">
+            <span>💰</span>
+            <small>REVENUE</small>
+            <strong id="adminRevenue">$0</strong>
+        </div>
+
+        <div class="admin-stat">
+            <span>📦</span>
+            <small>ORDERS</small>
+            <strong id="adminOrders">0</strong>
+        </div>
+
+        <div class="admin-stat">
+            <span>👥</span>
+            <small>PLAYERS</small>
+            <strong id="adminUsers">0</strong>
+        </div>
+
+        <div class="admin-stat">
+            <span>🍵</span>
+            <small>PRODUCTS</small>
+            <strong id="adminProducts">0</strong>
+        </div>
+
+    </div>
+
+
+    <div class="admin-layout">
+
+        <div class="admin-panel">
+
+            <div class="panel-heading">
+
+                <div>
+                    <span class="eyebrow">DATABASE</span>
+                    <h2>PRODUCTS</h2>
+                </div>
+
+                <button class="pixel-button primary small" id="addProductButton">
+                    + ADD TEA
+                </button>
+
+            </div>
+
+            <div id="adminProductsList"></div>
+
+        </div>
+
+
+        <div class="admin-panel">
+
+            <div class="panel-heading">
+
+                <div>
+                    <span class="eyebrow">LIVE FEED</span>
+                    <h2>RECENT ORDERS</h2>
+                </div>
+
+            </div>
+
+            <div id="adminOrdersList"></div>
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+
+<!-- =========================================================
+     CART DRAWER
+========================================================= -->
+
+<div class="overlay" id="cartOverlay"></div>
+
+<aside class="cart-drawer" id="cartDrawer">
+
+    <div class="drawer-header">
+
+        <div>
+            <span class="eyebrow">PLAYER INVENTORY</span>
+            <h2>YOUR CART</h2>
+        </div>
+
+        <button class="close-button" id="closeCart">
+            ×
+        </button>
+
+    </div>
+
+    <div id="cartItems" class="cart-items"></div>
+
+    <div class="cart-footer">
+
+        <div class="cart-total">
+            <span>TOTAL</span>
+            <strong id="cartTotal">$0.00</strong>
+        </div>
+
+        <button class="pixel-button primary full" id="checkoutButton">
+            CHECKOUT →
+        </button>
+
+    </div>
+
+</aside>
+
+
+<!-- =========================================================
+     FAVORITES DRAWER
+========================================================= -->
+
+<div class="overlay" id="favoriteOverlay"></div>
+
+<aside class="side-drawer" id="favoriteDrawer">
+
+    <div class="drawer-header">
+
+        <div>
+            <span class="eyebrow">SAVED LOOT</span>
+            <h2>FAVORITES</h2>
+        </div>
+
+        <button class="close-button" id="closeFavorites">
+            ×
+        </button>
+
+    </div>
+
+    <div id="favoriteItems"></div>
+
+</aside>
+
+
+<!-- =========================================================
+     AUTH MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="authModal">
+
+    <div class="modal auth-modal">
+
+        <button class="modal-close" id="closeAuth">
+            ×
+        </button>
+
+        <div class="auth-logo">
+            🍵
+        </div>
+
+        <span class="eyebrow">PLAYER ACCESS</span>
+
+        <h2 id="authTitle">WELCOME BACK</h2>
+
+        <p id="authSubtitle">
+            Login to continue your tea quest.
+        </p>
+
+
+        <form id="authForm">
+
+            <div id="signupNameGroup" class="hidden-field">
+
+                <label>
+                    PLAYER NAME
+
+                    <input
+                        id="authName"
+                        type="text"
+                        autocomplete="name"
+                    >
+
+                </label>
+
+            </div>
+
+            <label>
+                EMAIL
+
+                <input
+                    id="authEmail"
+                    type="email"
+                    required
+                    autocomplete="email"
+                >
+
+            </label>
+
+            <label>
+                PASSWORD
+
+                <input
+                    id="authPassword"
+                    type="password"
+                    required
+                    minlength="4"
+                    autocomplete="current-password"
+                >
+
+            </label>
+
+            <button class="pixel-button primary full" type="submit">
+                <span id="authSubmitText">ENTER WORLD</span>
+            </button>
+
+        </form>
+
+        <div class="auth-switch">
+
+            <span id="authSwitchText">
+                New player?
+            </span>
+
+            <button id="authSwitchButton">
+                CREATE ACCOUNT
+            </button>
+
+        </div>
+
+        <div class="demo-login">
+            <strong>ADMIN DEMO</strong>
+            <small>
+                admin@teaquest.com / admin123
+            </small>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     PRODUCT MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="productModal">
+
+    <div class="modal product-modal">
+
+        <button class="modal-close" id="closeProduct">
+            ×
+        </button>
+
+        <div id="productModalContent"></div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     CHECKOUT MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="checkoutModal">
+
+    <div class="modal checkout-modal">
+
+        <button class="modal-close" id="closeCheckout">
+            ×
+        </button>
+
+        <span class="eyebrow">FINAL QUEST</span>
+
+        <h2>CHECKOUT</h2>
+
+        <div id="checkoutSummary"></div>
+
+        <form id="checkoutForm">
+
+            <label>
+                FULL NAME
+                <input id="checkoutName" required>
+            </label>
+
+            <label>
+                DELIVERY ADDRESS
+                <textarea id="checkoutAddress" required rows="3"></textarea>
+            </label>
+
+            <label>
+                PHONE
+                <input id="checkoutPhone" required type="tel">
+            </label>
+
+            <label>
+                PAYMENT METHOD
+
+                <select id="checkoutPayment">
+
+                    <option value="cash">
+                        Cash on Delivery
+                    </option>
+
+                    <option value="card">
+                        Card — Demo
+                    </option>
+
+                </select>
+
+            </label>
+
+            <button class="pixel-button primary full" type="submit">
+                PLACE ORDER ✦
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ADMIN PRODUCT MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="adminProductModal">
+
+    <div class="modal">
+
+        <button class="modal-close" id="closeAdminProduct">
+            ×
+        </button>
+
+        <span class="eyebrow">DATABASE EDITOR</span>
+
+        <h2 id="adminProductModalTitle">
+            ADD NEW TEA
+        </h2>
+
+        <form id="adminProductForm">
+
+            <input type="hidden" id="editProductId">
+
+            <label>
+                NAME
+                <input id="adminProductName" required>
+            </label>
+
+            <label>
+                PRICE
+                <input id="adminProductPrice" required type="number" min="1">
+            </label>
+
+            <label>
+                CATEGORY
+
+                <select id="adminProductCategory">
+
+                    <option value="green">Green</option>
+                    <option value="black">Black</option>
+                    <option value="herbal">Herbal</option>
+                    <option value="special">Special</option>
+
+                </select>
+
+            </label>
+
+            <label>
+                ICON
+                <input id="adminProductIcon" placeholder="🍵">
+            </label>
+
+            <label>
+                DESCRIPTION
+
+                <textarea
+                    id="adminProductDescription"
+                    rows="4"
+                    required
+                ></textarea>
+
+            </label>
+
+            <button class="pixel-button primary full">
+                SAVE TEA
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     TEA ROULETTE MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="rouletteModal">
+
+    <div class="modal roulette-modal">
+
+        <button class="modal-close" id="closeRoulette">
+            ×
+        </button>
+
+        <span class="eyebrow">TEA ROULETTE</span>
+
+        <h2 id="rouletteTitle">SPINNING THE WHEEL...</h2>
+
+        <div class="roulette-stage">
+
+            <span class="roulette-icon" id="rouletteIcon">
+                🍵
+            </span>
+
+        </div>
+
+        <div id="rouletteResult" class="hidden-field"></div>
+
+        <div
+            id="rouletteActions"
+            class="roulette-actions hidden-field"
+        >
+
+            <button class="pixel-button primary" id="rouletteAddCart">
+                ADD TO CART
+            </button>
+
+            <button class="pixel-button primary" id="rouletteBuyNow">
+                BUY NOW
+            </button>
+
+            <button class="pixel-button secondary" id="rouletteViewDetails">
+                VIEW DETAILS
+            </button>
+
+            <button class="pixel-button secondary" id="rouletteSpinAgain">
+                SPIN AGAIN
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     TEA ORACLE MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="oracleModal">
+
+    <div class="modal oracle-modal">
+
+        <button class="modal-close" id="closeOracle">
+            ×
+        </button>
+
+        <span class="eyebrow">TEA ORACLE</span>
+
+        <h2 id="oracleTitle">ASK THE ORACLE</h2>
+
+        <div id="oracleQuiz">
+
+            <div class="oracle-question">
+
+                <span class="oracle-question-label">YOUR MOOD</span>
+
+                <div class="oracle-options" data-oracle-group="mood">
+                    <button class="oracle-option" data-value="calm">CALM</button>
+                    <button class="oracle-option" data-value="energetic">ENERGETIC</button>
+                    <button class="oracle-option" data-value="focused">FOCUSED</button>
+                    <button class="oracle-option" data-value="cozy">COZY</button>
+                    <button class="oracle-option" data-value="adventurous">ADVENTUROUS</button>
+                </div>
+
+            </div>
+
+            <div class="oracle-question">
+
+                <span class="oracle-question-label">FLAVOR CRAVING</span>
+
+                <div class="oracle-options" data-oracle-group="flavor">
+                    <button class="oracle-option" data-value="floral">FLORAL</button>
+                    <button class="oracle-option" data-value="fruity">FRUITY</button>
+                    <button class="oracle-option" data-value="spicy">SPICY</button>
+                    <button class="oracle-option" data-value="earthy">EARTHY</button>
+                    <button class="oracle-option" data-value="fresh">FRESH</button>
+                </div>
+
+            </div>
+
+            <div class="oracle-question">
+
+                <span class="oracle-question-label">STRENGTH</span>
+
+                <div class="oracle-options" data-oracle-group="strength">
+                    <button class="oracle-option" data-value="light">LIGHT</button>
+                    <button class="oracle-option" data-value="medium">MEDIUM</button>
+                    <button class="oracle-option" data-value="bold">BOLD</button>
+                </div>
+
+            </div>
+
+            <button class="pixel-button primary full" id="oracleReveal">
+                REVEAL MY BREW ✦
+            </button>
+
+        </div>
+
+        <div id="oracleResult" class="hidden-field"></div>
+
+        <div id="oracleActions" class="oracle-actions hidden-field">
+
+            <button class="pixel-button primary" id="oracleAddCart">
+                ADD TO CART
+            </button>
+
+            <button class="pixel-button secondary" id="oracleViewTea">
+                VIEW TEA
+            </button>
+
+            <button class="pixel-button secondary" id="oracleTryAgain">
+                TRY AGAIN
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer>
+
+    <div class="footer-brand">
+        <span>🍃</span>
+        <strong>TEAQUEST</strong>
+    </div>
+
+    <p>
+        Built for people who believe tea should feel like an adventure.
+    </p>
+
+    <div class="footer-links">
+
+        <button data-page="home">HOME</button>
+        <button data-page="shop">SHOP</button>
+        <button data-page="codex">CODEX</button>
+        <button data-page="about">LORE</button>
+        <button data-page="contact">CONTACT</button>
+
+    </div>
+
+    <small>
+        © 2026 TEAQUEST. All pixels reserved.
+    </small>
+
+</footer>
+
+
+<script src="java.js"></script>
+
+</body>
+</html>
