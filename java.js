@@ -406,6 +406,49 @@ async function fetchProfile(userId) {
 }
 
 
+async function ensureProfile(authUser) {
+
+    let profile = null;
+
+
+    try {
+
+        profile =
+            await fetchProfile(authUser.id);
+
+    } catch (error) {
+
+        profile = null;
+
+    }
+
+
+    if (profile) {
+        return profile;
+    }
+
+
+    const fallbackName =
+        (authUser.user_metadata &&
+            authUser.user_metadata.name) ||
+        (authUser.email || "player")
+            .split("@")[0];
+
+
+    await supabase
+        .from("profiles")
+        .upsert({
+            id: authUser.id,
+            email: authUser.email || "",
+            name: fallbackName
+        });
+
+
+    return await fetchProfile(authUser.id);
+
+}
+
+
 async function loadProfileSession() {
 
     const { data } =
@@ -424,7 +467,7 @@ async function loadProfileSession() {
 
 
     const profile =
-        await fetchProfile(sessionUser.id);
+        await ensureProfile(sessionUser);
 
 
     return profile
@@ -2254,7 +2297,7 @@ async function handleAuthentication(event) {
         try {
 
             profile =
-                await fetchProfile(data.user.id);
+                await ensureProfile(data.user);
 
         } catch (profileError) {
 
@@ -2369,7 +2412,7 @@ async function handleAuthentication(event) {
     try {
 
         profile =
-            await fetchProfile(data.user.id);
+            await ensureProfile(data.user);
 
     } catch (profileError) {
 
