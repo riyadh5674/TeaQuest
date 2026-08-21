@@ -350,7 +350,7 @@ function saveStorage(key, value) {
 ======================================================== */
 
 const SUPABASE_URL =
-    "https://mfgvssuodjtsibfqrcgu.db.co";
+    "https://mfgvssuodjtsibfqrcgu.supabase.co";
 
 const SUPABASE_KEY =
     "sb_publishable_GoQbk7khZkkvxJWnLXR8mQ_05xJQjot";
