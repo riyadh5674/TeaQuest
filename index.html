@@ -78,6 +78,10 @@
             CONTACT
         </button>
 
+        <button class="nav-link admin-link" data-page="admin">
+            ⚙ ADMIN
+        </button>
+
     </nav>
 
     <div class="nav-actions">
@@ -120,6 +124,7 @@
     <button data-page="codex">CODEX</button>
     <button data-page="about">LORE</button>
     <button data-page="contact">CONTACT</button>
+    <button class="admin-link" data-page="admin">⚙ ADMIN</button>
 
 </div>
 
@@ -703,69 +708,367 @@
     </div>
 
 
-    <div class="admin-stats">
+    <div class="admin-wrap">
 
-        <div class="admin-stat">
-            <span>💰</span>
-            <small>REVENUE</small>
-            <strong id="adminRevenue">$0</strong>
+        <div class="admin-tabs" id="adminTabs">
+
+            <button class="admin-tab active" data-admin-tab="overview">
+                ◆ OVERVIEW
+            </button>
+
+            <button class="admin-tab" data-admin-tab="products">
+                🍵 PRODUCTS
+            </button>
+
+            <button class="admin-tab" data-admin-tab="orders">
+                📦 ORDERS
+            </button>
+
+            <button class="admin-tab" data-admin-tab="customers">
+                👥 CUSTOMERS
+            </button>
+
+            <button class="admin-tab" data-admin-tab="settings">
+                ⚙ SETTINGS
+            </button>
+
         </div>
 
-        <div class="admin-stat">
-            <span>📦</span>
-            <small>ORDERS</small>
-            <strong id="adminOrders">0</strong>
-        </div>
 
-        <div class="admin-stat">
-            <span>👥</span>
-            <small>PLAYERS</small>
-            <strong id="adminUsers">0</strong>
-        </div>
+        <!-- ============ OVERVIEW ============ -->
 
-        <div class="admin-stat">
-            <span>🍵</span>
-            <small>PRODUCTS</small>
-            <strong id="adminProducts">0</strong>
-        </div>
+        <div class="admin-view active-view" data-admin-view="overview">
 
-    </div>
+            <div class="admin-stats">
 
-
-    <div class="admin-layout">
-
-        <div class="admin-panel">
-
-            <div class="panel-heading">
-
-                <div>
-                    <span class="eyebrow">DATABASE</span>
-                    <h2>PRODUCTS</h2>
+                <div class="admin-stat">
+                    <span>💰</span>
+                    <small>REVENUE</small>
+                    <strong id="adminRevenue">$0</strong>
                 </div>
 
-                <button class="pixel-button primary small" id="addProductButton">
-                    + ADD TEA
-                </button>
+                <div class="admin-stat">
+                    <span>📦</span>
+                    <small>ORDERS</small>
+                    <strong id="adminOrders">0</strong>
+                </div>
 
-            </div>
+                <div class="admin-stat">
+                    <span>👥</span>
+                    <small>PLAYERS</small>
+                    <strong id="adminUsers">0</strong>
+                </div>
 
-            <div id="adminProductsList"></div>
-
-        </div>
-
-
-        <div class="admin-panel">
-
-            <div class="panel-heading">
-
-                <div>
-                    <span class="eyebrow">LIVE FEED</span>
-                    <h2>RECENT ORDERS</h2>
+                <div class="admin-stat">
+                    <span>🍵</span>
+                    <small>PRODUCTS</small>
+                    <strong id="adminProducts">0</strong>
                 </div>
 
             </div>
 
-            <div id="adminOrdersList"></div>
+
+            <div class="admin-layout">
+
+                <div class="admin-panel">
+
+                    <div class="panel-heading">
+
+                        <div>
+                            <span class="eyebrow">ANALYTICS</span>
+                            <h2>REVENUE — LAST 7 DAYS</h2>
+                        </div>
+
+                    </div>
+
+                    <div class="chart-box" id="revenueChart"></div>
+
+                </div>
+
+
+                <div class="admin-panel">
+
+                    <div class="panel-heading">
+
+                        <div>
+                            <span class="eyebrow">LIVE FEED</span>
+                            <h2>RECENT ORDERS</h2>
+                        </div>
+
+                    </div>
+
+                    <div id="adminRecentOrders"></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============ PRODUCTS ============ -->
+
+        <div class="admin-view" data-admin-view="products">
+
+            <div class="admin-panel">
+
+                <div class="panel-heading">
+
+                    <div>
+                        <span class="eyebrow">DATABASE</span>
+                        <h2>PRODUCTS</h2>
+                    </div>
+
+                    <div class="panel-tools">
+
+                        <input
+                            type="search"
+                            id="adminProductSearch"
+                            placeholder="Search products..."
+                        >
+
+                        <button class="pixel-button primary small" id="addProductButton">
+                            + ADD TEA
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="admin-table-wrap">
+
+                    <table class="admin-table">
+
+                        <thead>
+                            <tr>
+                                <th>TEA</th>
+                                <th>CATEGORY</th>
+                                <th>PRICE</th>
+                                <th>RATING</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="adminProductsBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============ ORDERS ============ -->
+
+        <div class="admin-view" data-admin-view="orders">
+
+            <div class="admin-panel">
+
+                <div class="panel-heading">
+
+                    <div>
+                        <span class="eyebrow">QUEST BOARD</span>
+                        <h2>ALL ORDERS</h2>
+                    </div>
+
+                    <div class="filter-buttons" id="orderStatusFilters">
+
+                        <button class="filter-button active" data-status-filter="all">
+                            ALL
+                        </button>
+
+                        <button class="filter-button" data-status-filter="PROCESSING">
+                            PROCESSING
+                        </button>
+
+                        <button class="filter-button" data-status-filter="SHIPPED">
+                            SHIPPED
+                        </button>
+
+                        <button class="filter-button" data-status-filter="DELIVERED">
+                            DELIVERED
+                        </button>
+
+                        <button class="filter-button" data-status-filter="CANCELLED">
+                            CANCELLED
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="admin-table-wrap">
+
+                    <table class="admin-table">
+
+                        <thead>
+                            <tr>
+                                <th>ORDER</th>
+                                <th>CUSTOMER</th>
+                                <th>ITEMS</th>
+                                <th>TOTAL</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="adminOrdersBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============ CUSTOMERS ============ -->
+
+        <div class="admin-view" data-admin-view="customers">
+
+            <div class="admin-panel">
+
+                <div class="panel-heading">
+
+                    <div>
+                        <span class="eyebrow">PLAYERS</span>
+                        <h2>CUSTOMERS</h2>
+                    </div>
+
+                </div>
+
+                <div class="admin-table-wrap">
+
+                    <table class="admin-table">
+
+                        <thead>
+                            <tr>
+                                <th>PLAYER</th>
+                                <th>EMAIL</th>
+                                <th>LEVEL</th>
+                                <th>ORDERS</th>
+                                <th>ROLE</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="adminCustomersBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============ SETTINGS ============ -->
+
+        <div class="admin-view" data-admin-view="settings">
+
+            <div class="settings-grid">
+
+                <div class="admin-panel">
+
+                    <div class="panel-heading">
+
+                        <div>
+                            <span class="eyebrow">SECURITY</span>
+                            <h2>CHANGE PASSWORD</h2>
+                        </div>
+
+                    </div>
+
+                    <form id="changePasswordForm" class="settings-form">
+
+                        <label>
+                            CURRENT PASSWORD
+                            <input
+                                type="password"
+                                id="currentPassword"
+                                required
+                                autocomplete="current-password"
+                            >
+                        </label>
+
+                        <label>
+                            NEW PASSWORD
+                            <input
+                                type="password"
+                                id="newPassword"
+                                required
+                                minlength="6"
+                                autocomplete="new-password"
+                            >
+                        </label>
+
+                        <label>
+                            CONFIRM NEW PASSWORD
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                required
+                                minlength="6"
+                                autocomplete="new-password"
+                            >
+                        </label>
+
+                        <button class="pixel-button primary" type="submit">
+                            UPDATE PASSWORD
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <div class="admin-panel">
+
+                    <div class="panel-heading">
+
+                        <div>
+                            <span class="eyebrow">DATA</span>
+                            <h2>BACKUP &amp; RESTORE</h2>
+                        </div>
+
+                    </div>
+
+                    <div class="settings-actions">
+
+                        <button class="pixel-button secondary" id="exportDataButton">
+                            ⬇ EXPORT BACKUP
+                        </button>
+
+                        <button class="pixel-button secondary" id="importDataButton">
+                            ⬆ IMPORT BACKUP
+                        </button>
+
+                        <input
+                            type="file"
+                            id="importDataInput"
+                            accept=".json"
+                            class="hidden-field"
+                        >
+
+                        <button class="pixel-button danger" id="resetDataButton">
+                            ⚠ RESET ALL DATA
+                        </button>
+
+                    </div>
+
+                    <p class="settings-note">
+                        Export saves products, players and orders as a JSON backup.
+                        Import restores a previous backup. Reset wipes everything
+                        back to factory defaults.
+                    </p>
+
+                </div>
+
+            </div>
 
         </div>
 
@@ -914,6 +1217,14 @@
 
         </form>
 
+        <div class="admin-login-hint">
+
+            <button type="button" id="adminLoginButton">
+                ⚙ LOGIN AS GUILD MASTER
+            </button>
+
+        </div>
+
         <div class="auth-switch">
 
             <span id="authSwitchText">
@@ -924,13 +1235,6 @@
                 CREATE ACCOUNT
             </button>
 
-        </div>
-
-        <div class="demo-login">
-            <strong>ADMIN DEMO</strong>
-            <small>
-                admin@teaquest.com / admin123
-            </small>
         </div>
 
     </div>
@@ -1228,6 +1532,31 @@
             </button>
 
         </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ORDER DETAILS MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="orderModal">
+
+    <div class="modal">
+
+        <button class="modal-close" id="closeOrderModal">
+            ×
+        </button>
+
+        <span class="eyebrow">ORDER DETAILS</span>
+
+        <h2 id="orderModalTitle">
+            ORDER
+        </h2>
+
+        <div id="orderDetailsContent"></div>
 
     </div>
 

@@ -391,6 +391,93 @@ function escapeHTML(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+
+}
+
+
+/* =========================================================
+   SECURITY — PASSWORD HASHING
+========================================================= */
+
+async function hashPassword(password) {
+
+    const encoded =
+        new TextEncoder().encode(
+            `${password}::teaquest-salt`
+        );
+
+    try {
+
+        if (window.crypto && crypto.subtle) {
+
+            const digest =
+                await crypto.subtle.digest(
+                    "SHA-256",
+                    encoded
+                );
+
+            return Array.from(
+                new Uint8Array(digest)
+            ).map(byte =>
+                byte.toString(16).padStart(2, "0")
+            ).join("");
+
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Web Crypto unavailable, using fallback hash",
+            error
+        );
+
+    }
+
+    let fallback = 2166136261;
+
+    for (const byte of encoded) {
+
+        fallback ^= byte;
+
+        fallback =
+            Math.imul(fallback, 16777619);
+
+    }
+
+    return `fnv-${(fallback >>> 0).toString(16)}`;
+
+}
+
+
+async function verifyPassword(user, password) {
+
+    const hash =
+        await hashPassword(password);
+
+
+    if (user.passwordHash) {
+        return user.passwordHash === hash;
+    }
+
+
+    if (user.password === password) {
+
+        user.passwordHash = hash;
+
+        delete user.password;
+
+        saveStorage(
+            "teaquest_users",
+            users
+        );
+
+        return true;
+
+    }
+
+
+    return false;
+
 }
 
 
@@ -1174,7 +1261,7 @@ function initializeShop() {
     );
 
 
-    $$(".filter-button").forEach(button => {
+    $$(".shop-controls .filter-button").forEach(button => {
 
         button.addEventListener(
             "click",
@@ -1838,6 +1925,12 @@ function initializeAuthentication() {
     );
 
 
+    $("#adminLoginButton")?.addEventListener(
+        "click",
+        openAdminLogin
+    );
+
+
     $("#logoutButton")?.addEventListener(
         "click",
         logout
@@ -1853,6 +1946,30 @@ function openAuth() {
     openModal(
         $("#authModal")
     );
+
+}
+
+
+function openAdminLogin() {
+
+    setAuthMode("login");
+
+    $("#authTitle").textContent =
+        "GUILD MASTER ACCESS";
+
+    $("#authSubtitle").textContent =
+        "Enter your master credentials to open the command center.";
+
+    const emailInput = $("#authEmail");
+
+    if (emailInput && !emailInput.value) {
+
+        emailInput.value =
+            "admin@teaquest.com";
+
+    }
+
+    $("#authPassword")?.focus();
 
 }
 
@@ -1920,7 +2037,7 @@ function setAuthMode(mode) {
 }
 
 
-function handleAuthentication(event) {
+async function handleAuthentication(event) {
 
     event.preventDefault();
 
@@ -1942,12 +2059,19 @@ function handleAuthentication(event) {
         const user =
             users.find(
                 item =>
-                    item.email === email &&
-                    item.password === password
+                    item.email === email
             );
 
 
-        if (!user) {
+        const valid =
+            user &&
+            await verifyPassword(
+                user,
+                password
+            );
+
+
+        if (!valid) {
 
             toast(
                 "LOGIN FAILED",
@@ -2056,7 +2180,8 @@ function handleAuthentication(event) {
 
         email,
 
-        password,
+        passwordHash:
+            await hashPassword(password),
 
         role: "customer",
 
@@ -2066,7 +2191,10 @@ function handleAuthentication(event) {
 
         achievements: [],
 
-        rouletteSpins: 0
+        rouletteSpins: 0,
+
+        createdAt:
+            new Date().toISOString()
 
     };
 
@@ -2141,6 +2269,13 @@ function logout() {
 
 
 function updateNavigation() {
+
+    document.body.classList.toggle(
+        "is-admin",
+        !!currentUser &&
+        currentUser.role === "admin"
+    );
+
 
     if (!currentUser) {
 
@@ -2723,8 +2858,51 @@ function initializeContact() {
 /* =========================================================
    ADMIN
 ========================================================= */
+const ORDER_STATUSES = [
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED",
+    "CANCELLED"
+];
+
+
+let activeAdminTab = "overview";
+
+let activeOrderStatusFilter = "all";
+
 
 function initializeAdmin() {
+
+    $$(".admin-tab").forEach(tab => {
+
+        tab.addEventListener(
+            "click",
+            () => {
+
+                activeAdminTab =
+                    tab.dataset.adminTab;
+
+
+                $$(".admin-tab").forEach(item =>
+                    item.classList.toggle(
+                        "active",
+                        item === tab
+                    )
+                );
+
+
+                $$(".admin-view").forEach(view =>
+                    view.classList.toggle(
+                        "active-view",
+                        view.dataset.adminView === activeAdminTab
+                    )
+                );
+
+            }
+        );
+
+    });
+
 
     $("#addProductButton")?.addEventListener(
         "click",
@@ -2746,6 +2924,79 @@ function initializeAdmin() {
         saveAdminProduct
     );
 
+
+    $("#adminProductSearch")?.addEventListener(
+        "input",
+        renderAdminProductsTable
+    );
+
+
+    $$("#orderStatusFilters .filter-button")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    activeOrderStatusFilter =
+                        button.dataset.statusFilter;
+
+
+                    $$("#orderStatusFilters .filter-button")
+                        .forEach(item =>
+                            item.classList.toggle(
+                                "active",
+                                item === button
+                            )
+                        );
+
+
+                    renderAdminOrdersTable();
+
+                }
+            );
+
+        });
+
+
+    $("#closeOrderModal")?.addEventListener(
+        "click",
+        () =>
+            closeModal(
+                $("#orderModal")
+            )
+    );
+
+
+    $("#changePasswordForm")?.addEventListener(
+        "submit",
+        changeAdminPassword
+    );
+
+
+    $("#exportDataButton")?.addEventListener(
+        "click",
+        exportBackup
+    );
+
+
+    $("#importDataButton")?.addEventListener(
+        "click",
+        () => $("#importDataInput")?.click()
+    );
+
+
+    $("#importDataInput")?.addEventListener(
+        "change",
+        importBackup
+    );
+
+
+    $("#resetDataButton")?.addEventListener(
+        "click",
+        resetAllData
+    );
+
 }
 
 
@@ -2757,8 +3008,26 @@ function renderAdmin() {
     ) {
 
         return;
+
     }
 
+
+    renderAdminStats();
+
+    renderRevenueChart();
+
+    renderAdminRecentOrders();
+
+    renderAdminProductsTable();
+
+    renderAdminOrdersTable();
+
+    renderAdminCustomersTable();
+
+}
+
+
+function renderAdminStats() {
 
     const revenue =
         orders.reduce(
@@ -2786,41 +3055,229 @@ function renderAdmin() {
     $("#adminProducts").textContent =
         products.length;
 
-
-    const productList =
-        $("#adminProductsList");
+}
 
 
-    if (productList) {
+function renderRevenueChart() {
 
-        productList.innerHTML =
-            products.map(product => `
+    const container =
+        $("#revenueChart");
 
-                <div class="admin-product-row">
+    if (!container) return;
 
-                    <div class="admin-product-icon">
-                        ${escapeHTML(product.icon)}
+
+    const days = [];
+
+
+    for (let i = 6; i >= 0; i--) {
+
+        const date =
+            new Date();
+
+        date.setDate(date.getDate() - i);
+
+
+        days.push({
+            key:
+                date.toISOString().slice(0, 10),
+
+            label:
+                date.toLocaleDateString("en-US", { weekday: "short" }),
+
+            total: 0
+        });
+
+    }
+
+
+    orders.forEach(order => {
+
+        const key =
+            (order.createdAt || "").slice(0, 10);
+
+        const day =
+            days.find(item => item.key === key);
+
+        if (day) {
+            day.total +=
+                Number(order.total) || 0;
+        }
+
+    });
+
+
+    const max =
+        Math.max(
+            ...days.map(day => day.total),
+            1
+        );
+
+
+    container.innerHTML =
+        days.map(day => `
+
+            <div class="chart-column">
+
+                <strong>
+                    ${day.total > 0 ? `$${day.total.toFixed(0)}` : ""}
+                </strong>
+
+                <div class="chart-bar-track">
+
+                    <div
+                        class="chart-bar"
+                        style="height:${Math.max(4, Math.round((day.total / max) * 100))}%"
+                    ></div>
+
+                </div>
+
+                <small>${escapeHTML(day.label)}</small>
+
+            </div>
+
+        `).join("");
+
+}
+
+
+function renderAdminRecentOrders() {
+
+    const container =
+        $("#adminRecentOrders");
+
+    if (!container) return;
+
+
+    if (!orders.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <p>No orders yet.</p>
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    container.innerHTML =
+        orders
+            .slice()
+            .reverse()
+            .slice(0, 5)
+            .map(order => `
+
+                <div class="admin-order">
+
+                    <div class="admin-order-top">
+
+                        <strong>
+                            ${escapeHTML(order.id)}
+                        </strong>
+
+                        <span>
+                            $${Number(order.total).toFixed(2)}
+                        </span>
+
                     </div>
 
-                    <div>
+                    <p>
+                        ${escapeHTML(order.customer)}
+                        ·
+                        ${escapeHTML(order.status)}
+                    </p>
+
+                </div>
+
+            `)
+            .join("");
+
+}
+
+
+function renderAdminProductsTable() {
+
+    const body =
+        $("#adminProductsBody");
+
+    if (!body) return;
+
+
+    const search =
+        ($("#adminProductSearch")?.value || "")
+            .trim()
+            .toLowerCase();
+
+
+    const result =
+        products.filter(product =>
+
+            !search ||
+            `${product.name} ${product.category}`
+                .toLowerCase()
+                .includes(search)
+
+        );
+
+
+    if (!result.length) {
+
+        body.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state">
+                        <p>No products found.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    body.innerHTML =
+        result.map(product => `
+
+            <tr>
+
+                <td>
+                    <div class="table-product">
+
+                        <span class="table-product-icon">
+                            ${escapeHTML(product.icon)}
+                        </span>
 
                         <strong>
                             ${escapeHTML(product.name)}
                         </strong>
 
-                        <small>
-                            $${Number(product.price).toFixed(2)}
-                            ·
-                            ${escapeHTML(product.category)}
-                        </small>
-
                     </div>
+                </td>
 
+                <td>
+                    <span class="category-tag">
+                        ${escapeHTML(product.category)}
+                    </span>
+                </td>
+
+                <td>
+                    $${Number(product.price).toFixed(2)}
+                </td>
+
+                <td>
+                    ★ ${Number(product.rating).toFixed(1)}
+                </td>
+
+                <td>
                     <div class="admin-actions">
 
                         <button
                             title="Edit"
-                            data-edit-product="${product.id}"
+                            data-edit-product="${escapeHTML(product.id)}"
                         >
                             ✎
                         </button>
@@ -2828,102 +3285,893 @@ function renderAdmin() {
                         <button
                             class="delete-product"
                             title="Delete"
-                            data-delete-product="${product.id}"
+                            data-delete-product="${escapeHTML(product.id)}"
                         >
                             ×
                         </button>
 
                     </div>
+                </td>
 
-                </div>
+            </tr>
 
-            `).join("");
-
-
-        productList
-            .querySelectorAll("[data-edit-product]")
-            .forEach(button => {
-
-                button.addEventListener(
-                    "click",
-                    () =>
-                        openAdminProductModal(
-                            button.dataset.editProduct
-                        )
-                );
-
-            });
+        `).join("");
 
 
-        productList
-            .querySelectorAll("[data-delete-product]")
-            .forEach(button => {
+    bindAdminProductActions(body);
 
-                button.addEventListener(
-                    "click",
-                    () =>
-                        deleteProduct(
-                            button.dataset.deleteProduct
-                        )
-                );
+}
 
-            });
+
+function bindAdminProductActions(scope) {
+
+    scope
+        .querySelectorAll("[data-edit-product]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    openAdminProductModal(
+                        button.dataset.editProduct
+                    )
+            );
+
+        });
+
+
+    scope
+        .querySelectorAll("[data-delete-product]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    deleteProduct(
+                        button.dataset.deleteProduct
+                    )
+            );
+
+        });
+
+}
+
+
+function formatOrderDate(iso) {
+
+    if (!iso) return "—";
+
+    const date =
+        new Date(iso);
+
+    if (Number.isNaN(date.getTime())) {
+        return "—";
+    }
+
+
+    return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric"
+    }) + " · " + date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+
+}
+
+
+function renderAdminOrdersTable() {
+
+    const body =
+        $("#adminOrdersBody");
+
+    if (!body) return;
+
+
+    const result =
+        activeOrderStatusFilter === "all"
+            ? orders
+            : orders.filter(
+                order =>
+                    order.status === activeOrderStatusFilter
+            );
+
+
+    if (!result.length) {
+
+        body.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="empty-state">
+                        <p>No orders in this status.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
 
     }
 
 
-    const ordersList =
-        $("#adminOrdersList");
+    body.innerHTML =
+        result
+            .slice()
+            .reverse()
+            .map(order => `
 
+                <tr>
 
-    if (ordersList) {
+                    <td>
+                        <strong class="order-id">
+                            ${escapeHTML(order.id)}
+                        </strong>
+                        <small class="table-sub">
+                            ${formatOrderDate(order.createdAt)}
+                        </small>
+                    </td>
 
-        if (!orders.length) {
+                    <td>
+                        ${escapeHTML(order.customer)}
+                        <small class="table-sub">
+                            ${escapeHTML(order.phone || "")}
+                        </small>
+                    </td>
 
-            ordersList.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">📦</div>
-                    <p>No orders yet.</p>
-                </div>
-            `;
+                    <td>
+                        ${(order.items || []).length}
+                    </td>
 
-        } else {
+                    <td>
+                        $${Number(order.total).toFixed(2)}
+                    </td>
 
-            ordersList.innerHTML =
-                orders
-                    .slice()
-                    .reverse()
-                    .slice(0, 10)
-                    .map(order => `
+                    <td>
+                        <select
+                            class="status-select"
+                            data-order-status="${escapeHTML(order.id)}"
+                        >
+                            ${ORDER_STATUSES.map(status => `
+                                <option
+                                    value="${status}"
+                                    ${order.status === status ? "selected" : ""}
+                                >
+                                    ${status}
+                                </option>
+                            `).join("")}
+                        </select>
+                    </td>
 
-                        <div class="admin-order">
+                    <td>
+                        <div class="admin-actions">
 
-                            <div class="admin-order-top">
+                            <button
+                                title="View details"
+                                data-view-order="${escapeHTML(order.id)}"
+                            >
+                                👁
+                            </button>
 
-                                <strong>
-                                    ${escapeHTML(order.id)}
-                                </strong>
-
-                                <span>
-                                    $${Number(order.total).toFixed(2)}
-                                </span>
-
-                            </div>
-
-                            <p>
-                                ${escapeHTML(order.customer)}
-                                ·
-                                ${escapeHTML(order.status)}
-                            </p>
+                            <button
+                                class="delete-product"
+                                title="Delete order"
+                                data-delete-order="${escapeHTML(order.id)}"
+                            >
+                                ×
+                            </button>
 
                         </div>
+                    </td>
 
-                    `)
-                    .join("");
+                </tr>
+
+            `)
+            .join("");
+
+
+    body
+        .querySelectorAll("[data-order-status]")
+        .forEach(select => {
+
+            select.addEventListener(
+                "change",
+                () =>
+                    updateOrderStatus(
+                        select.dataset.orderStatus,
+                        select.value
+                    )
+            );
+
+        });
+
+
+    body
+        .querySelectorAll("[data-view-order]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    viewOrderDetails(
+                        button.dataset.viewOrder
+                    )
+            );
+
+        });
+
+
+    body
+        .querySelectorAll("[data-delete-order]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    adminDeleteOrder(
+                        button.dataset.deleteOrder
+                    )
+            );
+
+        });
+
+}
+
+
+function updateOrderStatus(orderId, status) {
+
+    const order =
+        orders.find(
+            item => item.id === orderId
+        );
+
+    if (!order) return;
+
+
+    order.status = status;
+
+
+    saveStorage(
+        "teaquest_orders",
+        orders
+    );
+
+
+    renderProfile();
+
+    renderAdminRecentOrders();
+
+
+    toast(
+        "ORDER UPDATED",
+        `${orderId} marked as ${status}.`
+    );
+
+}
+
+
+function viewOrderDetails(orderId) {
+
+    const order =
+        orders.find(
+            item => item.id === orderId
+        );
+
+    if (!order) return;
+
+
+    $("#orderModalTitle").textContent =
+        order.id;
+
+
+    $("#orderDetailsContent").innerHTML = `
+
+        <div class="order-info-grid">
+
+            <div class="order-info-line">
+                <span>CUSTOMER</span>
+                <strong>${escapeHTML(order.customer)}</strong>
+            </div>
+
+            <div class="order-info-line">
+                <span>PHONE</span>
+                <strong>${escapeHTML(order.phone || "—")}</strong>
+            </div>
+
+            <div class="order-info-line">
+                <span>ADDRESS</span>
+                <strong>${escapeHTML(order.address || "—")}</strong>
+            </div>
+
+            <div class="order-info-line">
+                <span>PAYMENT</span>
+                <strong>${escapeHTML(order.payment || "—")}</strong>
+            </div>
+
+            <div class="order-info-line">
+                <span>STATUS</span>
+                <strong>${escapeHTML(order.status)}</strong>
+            </div>
+
+            <div class="order-info-line">
+                <span>DATE</span>
+                <strong>${formatOrderDate(order.createdAt)}</strong>
+            </div>
+
+        </div>
+
+        <div class="order-details-list">
+
+            ${(order.items || []).map(item => `
+
+                <div class="order-detail-row">
+                    <span>
+                        ${escapeHTML(item.name)} × ${item.quantity}
+                    </span>
+                    <span>
+                        $${(Number(item.price) * item.quantity).toFixed(2)}
+                    </span>
+                </div>
+
+            `).join("")}
+
+            <div class="checkout-summary-total">
+                <span>TOTAL</span>
+                <span>
+                    $${Number(order.total).toFixed(2)}
+                </span>
+            </div>
+
+        </div>
+
+    `;
+
+
+    openModal(
+        $("#orderModal")
+    );
+
+}
+
+
+function adminDeleteOrder(orderId) {
+
+    const order =
+        orders.find(
+            item => item.id === orderId
+        );
+
+    if (!order) return;
+
+
+    if (!window.confirm(`Delete order ${orderId}?`)) {
+        return;
+    }
+
+
+    orders =
+        orders.filter(
+            item => item.id !== orderId
+        );
+
+
+    saveStorage(
+        "teaquest_orders",
+        orders
+    );
+
+
+    renderEverything();
+
+
+    toast(
+        "ORDER DELETED",
+        `${orderId} has been removed.`
+    );
+
+}
+
+
+function renderAdminCustomersTable() {
+
+    const body =
+        $("#adminCustomersBody");
+
+    if (!body) return;
+
+
+    if (!users.length) {
+
+        body.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="empty-state">
+                        <p>No players yet.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    body.innerHTML =
+        users.map(user => {
+
+            normalizeUser(user);
+
+
+            const isSelf =
+                user.id === currentUser.id;
+
+            const level =
+                getLevelInfo(user.xp).level;
+
+            const userOrderCount =
+                orders.filter(
+                    order =>
+                        order.userId === user.id
+                ).length;
+
+
+            const roleTag =
+                user.role === "admin"
+                    ? '<span class="role-tag admin">ADMIN</span>'
+                    : '<span class="role-tag">CUSTOMER</span>';
+
+
+            return `
+
+                <tr>
+
+                    <td>
+                        <div class="table-product">
+
+                            <span class="table-product-icon">
+                                ${user.role === "admin" ? "👑" : "🧙"}
+                            </span>
+
+                            <strong>
+                                ${escapeHTML(user.name)}${isSelf ? ' <small class="table-sub">(you)</small>' : ""}
+                            </strong>
+
+                        </div>
+                    </td>
+
+                    <td>
+                        ${escapeHTML(user.email)}
+                    </td>
+
+                    <td>
+                        LVL ${level}
+                    </td>
+
+                    <td>
+                        ${userOrderCount}
+                    </td>
+
+                    <td>
+                        ${roleTag}
+                    </td>
+
+                    <td>
+                        <div class="admin-actions">
+                            ${isSelf
+                                ? '<small class="table-sub">—</small>'
+                                : `
+                                    <button
+                                        title="${user.role === "admin" ? "Demote to customer" : "Promote to admin"}"
+                                        data-toggle-role="${escapeHTML(user.id)}"
+                                    >
+                                        ${user.role === "admin" ? "▼" : "▲"}
+                                    </button>
+
+                                    ${user.role === "admin"
+                                        ? ""
+                                        : `
+                                            <button
+                                                class="delete-product"
+                                                title="Delete player"
+                                                data-delete-user="${escapeHTML(user.id)}"
+                                            >
+                                                ×
+                                            </button>
+                                        `}
+                                `}
+                        </div>
+                    </td>
+
+                </tr>
+
+            `;
+
+        }).join("");
+
+
+    body
+        .querySelectorAll("[data-toggle-role]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    toggleUserRole(
+                        button.dataset.toggleRole
+                    )
+            );
+
+        });
+
+
+    body
+        .querySelectorAll("[data-delete-user]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    adminDeleteUser(
+                        button.dataset.deleteUser
+                    )
+            );
+
+        });
+
+}
+
+
+function toggleUserRole(userId) {
+
+    const user =
+        users.find(
+            item => item.id === userId
+        );
+
+    if (!user) return;
+
+
+    if (user.email === "admin@teaquest.com") {
+
+        toast(
+            "PROTECTED ACCOUNT",
+            "The primary guild master cannot be changed."
+        );
+
+        return;
+
+    }
+
+
+    user.role =
+        user.role === "admin"
+            ? "customer"
+            : "admin";
+
+
+    if (currentUser.id === userId) {
+
+        currentUser.role =
+            user.role;
+
+        saveStorage(
+            "teaquest_currentUser",
+            currentUser
+        );
+
+        updateNavigation();
+
+    }
+
+
+    saveStorage(
+        "teaquest_users",
+        users
+    );
+
+
+    renderAdminCustomersTable();
+
+
+    toast(
+        "ROLE UPDATED",
+        `${user.name} is now ${user.role === "admin" ? "an admin" : "a customer"}.`
+    );
+
+}
+
+
+function adminDeleteUser(userId) {
+
+    const user =
+        users.find(
+            item => item.id === userId
+        );
+
+    if (!user) return;
+
+
+    if (user.id === currentUser.id) return;
+
+
+    if (user.role === "admin") {
+
+        toast(
+            "ACCESS DENIED",
+            "Demote this admin before deleting."
+        );
+
+        return;
+
+    }
+
+
+    if (!window.confirm(`Delete player "${user.name}"? Their orders will remain.`)) {
+        return;
+    }
+
+
+    users =
+        users.filter(
+            item => item.id !== userId
+        );
+
+
+    saveStorage(
+        "teaquest_users",
+        users
+    );
+
+
+    renderAdminCustomersTable();
+
+    renderAdminStats();
+
+
+    toast(
+        "PLAYER REMOVED",
+        `${user.name} left the guild.`
+    );
+
+}
+
+
+async function changeAdminPassword(event) {
+
+    event.preventDefault();
+
+
+    const current =
+        $("#currentPassword").value;
+
+    const next =
+        $("#newPassword").value;
+
+    const confirm =
+        $("#confirmPassword").value;
+
+
+    if (next !== confirm) {
+
+        toast(
+            "MISMATCH",
+            "New passwords do not match."
+        );
+
+        return;
+
+    }
+
+
+    const admin =
+        users.find(
+            item => item.id === currentUser.id
+        );
+
+    if (!admin) return;
+
+
+    if (!(await verifyPassword(admin, current))) {
+
+        toast(
+            "WRONG PASSWORD",
+            "Current password is incorrect."
+        );
+
+        return;
+
+    }
+
+
+    admin.passwordHash =
+        await hashPassword(next);
+
+    delete admin.password;
+
+
+    saveStorage(
+        "teaquest_users",
+        users
+    );
+
+
+    event.target.reset();
+
+
+    toast(
+        "SECURITY UPDATED",
+        "Your password has been changed."
+    );
+
+}
+
+
+function exportBackup() {
+
+    const backup = {
+        exportedAt:
+            new Date().toISOString(),
+
+        products,
+
+        users,
+
+        orders,
+
+        cart,
+
+        favorites
+    };
+
+
+    const blob =
+        new Blob(
+            [JSON.stringify(backup, null, 2)],
+            { type: "application/json" }
+        );
+
+
+    const link =
+        document.createElement("a");
+
+    link.href =
+        URL.createObjectURL(blob);
+
+    link.download =
+        `teaquest-backup-${Date.now()}.json`;
+
+    link.click();
+
+    URL.revokeObjectURL(link.href);
+
+
+    toast(
+        "BACKUP EXPORTED",
+        "Your data has been downloaded."
+    );
+
+}
+
+
+function importBackup(event) {
+
+    const file =
+        event.target.files[0];
+
+    if (!file) return;
+
+
+    const reader =
+        new FileReader();
+
+
+    reader.onload = () => {
+
+        try {
+
+            const data =
+                JSON.parse(reader.result);
+
+
+            if (
+                !Array.isArray(data.products) ||
+                !Array.isArray(data.users)
+            ) {
+                throw new Error("Invalid backup");
+            }
+
+
+            if (!window.confirm("Import this backup? Current data will be replaced.")) {
+                return;
+            }
+
+
+            products =
+                data.products;
+
+            users =
+                data.users;
+
+            orders =
+                Array.isArray(data.orders) ? data.orders : [];
+
+            cart =
+                Array.isArray(data.cart) ? data.cart : [];
+
+            favorites =
+                Array.isArray(data.favorites) ? data.favorites : [];
+
+
+            saveStorage("teaquest_products", products);
+
+            saveStorage("teaquest_users", users);
+
+            saveStorage("teaquest_orders", orders);
+
+            saveStorage("teaquest_cart", cart);
+
+            saveStorage("teaquest_favorites", favorites);
+
+
+            currentUser = null;
+
+            localStorage.removeItem("teaquest_currentUser");
+
+
+            updateNavigation();
+
+            renderEverything();
+
+
+            toast(
+                "BACKUP RESTORED",
+                "Data imported successfully."
+            );
+
+        } catch (error) {
+
+            toast(
+                "IMPORT FAILED",
+                "That file is not a valid TEAQUEST backup."
+            );
 
         }
 
+        event.target.value = "";
+
+    };
+
+
+    reader.readAsText(file);
+
+}
+
+
+function resetAllData() {
+
+    if (!window.confirm("Reset EVERYTHING? All products, players and orders will be wiped.")) {
+        return;
     }
+
+
+    if (!window.confirm("Final warning. This cannot be undone.")) {
+        return;
+    }
+
+
+    [
+        "teaquest_products",
+        "teaquest_users",
+        "teaquest_orders",
+        "teaquest_cart",
+        "teaquest_favorites",
+        "teaquest_currentUser"
+    ].forEach(key =>
+        localStorage.removeItem(key)
+    );
+
+
+    location.reload();
 
 }
 
@@ -3880,21 +5128,31 @@ function applyTheme(theme) {
     );
 
 
-    if (theme === "night") {
+    const night =
+        theme === "night";
+
+
+    document.body.classList.toggle(
+        "night-mode",
+        night
+    );
+
+
+    if (night) {
 
         document.documentElement.style.setProperty(
             "--green",
-            "#9c7cff"
+            "#82ab74"
         );
 
         document.documentElement.style.setProperty(
             "--green-dark",
-            "#493b78"
+            "#24352a"
         );
 
         document.documentElement.style.setProperty(
             "--mint",
-            "#c4b6ff"
+            "#b8ccb0"
         );
 
         $("#themeButton").textContent =
@@ -3919,6 +5177,21 @@ function applyTheme(theme) {
 
         $("#themeButton").textContent =
             "☀";
+
+    }
+
+
+    const metaTheme =
+        document.querySelector(
+            'meta[name="theme-color"]'
+        );
+
+    if (metaTheme) {
+
+        metaTheme.setAttribute(
+            "content",
+            night ? "#0b0d0c" : "#101b16"
+        );
 
     }
 
