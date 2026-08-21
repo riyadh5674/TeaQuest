@@ -356,6 +356,13 @@ const SUPABASE_KEY =
     "sb_publishable_GoQbk7khZkkvxJWnLXR8mQ_05xJQjot";
 
 
+const ADMIN_EMAIL =
+    "admin@teaquest.com";
+
+const ADMIN_PASSWORD =
+    "TeaQuest@2026";
+
+
 const db =
     window.supabase &&
     typeof window.supabase.createClient === "function"
@@ -2176,7 +2183,17 @@ function openAdminLogin() {
     if (emailInput && !emailInput.value) {
 
         emailInput.value =
-            "admin@teaquest.com";
+            ADMIN_EMAIL;
+
+    }
+
+    const passwordInput =
+        $("#authPassword");
+
+    if (passwordInput && !passwordInput.value) {
+
+        passwordInput.value =
+            ADMIN_PASSWORD;
 
     }
 
