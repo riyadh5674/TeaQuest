@@ -2159,13 +2159,17 @@ function openAuth() {
 
 function openAdminLogin() {
 
-    setAuthMode("login");
+    if (authMode === "admin") {
 
-    $("#authTitle").textContent =
-        "GUILD MASTER ACCESS";
+        setAuthMode("login");
 
-    $("#authSubtitle").textContent =
-        "Enter your master credentials to open the command center.";
+        return;
+
+    }
+
+
+    setAuthMode("admin");
+
 
     const emailInput = $("#authEmail");
 
@@ -2200,23 +2204,44 @@ function setAuthMode(mode) {
     const signup =
         mode === "signup";
 
+    const admin =
+        mode === "admin";
+
+
+    $(".auth-modal")?.classList.toggle(
+        "admin-mode",
+        admin
+    );
+
+
+    $("#authEyebrow").textContent =
+        admin
+            ? "GUILD MASTER"
+            : "PLAYER ACCESS";
+
 
     $("#authTitle").textContent =
-        signup
-            ? "CREATE YOUR CHARACTER"
-            : "WELCOME BACK";
+        admin
+            ? "GUILD MASTER ACCESS"
+            : signup
+                ? "CREATE YOUR CHARACTER"
+                : "WELCOME BACK";
 
 
     $("#authSubtitle").textContent =
-        signup
-            ? "Create your player account."
-            : "Login to continue your tea quest.";
+        admin
+            ? "Enter your master credentials to open the command center."
+            : signup
+                ? "Create your player account."
+                : "Login to continue your tea quest.";
 
 
     $("#authSubmitText").textContent =
-        signup
-            ? "CREATE ACCOUNT"
-            : "ENTER WORLD";
+        admin
+            ? "OPEN COMMAND CENTER"
+            : signup
+                ? "CREATE ACCOUNT"
+                : "ENTER WORLD";
 
 
     $("#authSwitchText").textContent =
@@ -2229,6 +2254,26 @@ function setAuthMode(mode) {
         signup
             ? "LOGIN"
             : "CREATE ACCOUNT";
+
+
+    $("#adminLoginButton").textContent =
+        admin
+            ? "← BACK TO PLAYER LOGIN"
+            : "⚙ LOGIN AS GUILD MASTER";
+
+
+    $("#adminSetupNote")
+        ?.classList.toggle(
+            "hidden-field",
+            !admin
+        );
+
+
+    $(".auth-switch")
+        ?.classList.toggle(
+            "hidden-field",
+            admin
+        );
 
 
     $("#signupNameGroup")
@@ -2259,6 +2304,105 @@ async function handleAuthentication(event) {
     const password =
         $("#authPassword")
             .value;
+
+
+    if (authMode === "admin") {
+
+        if (!db) {
+
+            toast(
+                "BACKEND OFFLINE",
+                "Cannot reach the server."
+            );
+
+            return;
+        }
+
+
+        const { data, error } =
+            await db.auth.signInWithPassword({
+                email,
+                password
+            });
+
+
+        if (error || !data.user) {
+
+            toast(
+                "ACCESS DENIED",
+                "Wrong master credentials."
+            );
+
+            return;
+        }
+
+
+        let profile = null;
+
+        try {
+
+            profile =
+                await ensureProfile(data.user);
+
+        } catch (profileError) {
+
+            profile = null;
+
+        }
+
+
+        const mappedProfile =
+            profile
+                ? mapProfile(profile)
+                : null;
+
+
+        if (
+            !mappedProfile ||
+            mappedProfile.role !== "admin"
+        ) {
+
+            await db.auth.signOut();
+
+
+            toast(
+                "ACCESS DENIED",
+                "This account is not a Guild Master."
+            );
+
+            return;
+        }
+
+
+        currentUser = mappedProfile;
+
+
+        saveStorage(
+            "teaquest_currentUser",
+            currentUser
+        );
+
+
+        closeModal(
+            $("#authModal")
+        );
+
+
+        updateNavigation();
+
+        renderProfile();
+
+
+        toast(
+            "HAIL, GUILD MASTER",
+            "The command center awaits."
+        );
+
+
+        navigateTo("admin");
+
+        return;
+    }
 
 
     if (authMode === "login") {

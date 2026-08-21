@@ -1160,7 +1160,7 @@
             🍵
         </div>
 
-        <span class="eyebrow">PLAYER ACCESS</span>
+        <span class="eyebrow" id="authEyebrow">PLAYER ACCESS</span>
 
         <h2 id="authTitle">WELCOME BACK</h2>
 
@@ -1223,6 +1223,13 @@
                 ⚙ LOGIN AS GUILD MASTER
             </button>
 
+        </div>
+
+        <div class="admin-setup-note hidden-field" id="adminSetupNote">
+            FIRST TIME SETUP — 1) Create your account above in PLAYER mode using
+            your admin email. 2) In Supabase SQL Editor run:
+            update public.profiles set role = 'admin' where email = 'your-email';
+            3) Come back here and log in as Guild Master.
         </div>
 
         <div class="auth-switch">

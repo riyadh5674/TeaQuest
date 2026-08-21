@@ -685,6 +685,50 @@ body.is-admin .mobile-nav button.admin-link {
 }
 
 
+/* guild master mode — gold themed auth */
+
+.auth-modal.admin-mode {
+
+    border: 2px solid var(--gold);
+
+    box-shadow:
+        0 0 0 4px rgba(255, 200, 60, .08),
+        8px 8px 0 rgba(0, 0, 0, .45);
+}
+
+.auth-modal.admin-mode #authTitle,
+.auth-modal.admin-mode #authEyebrow {
+
+    color: var(--gold);
+}
+
+.auth-modal.admin-mode .pixel-button.primary {
+
+    background: var(--gold);
+
+    color: #241a02;
+}
+
+.admin-setup-note {
+
+    margin-top: 15px;
+
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+
+    background: var(--bg);
+
+    color: var(--muted);
+
+    font-size: 15px;
+
+    line-height: 1.5;
+
+    text-align: left;
+}
+
+
 /* =========================================================
    MOBILE NAV
 ========================================================= */
