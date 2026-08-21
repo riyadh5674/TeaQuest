@@ -345,6 +345,172 @@ function saveStorage(key, value) {
 }
 
 
+/* =========================================================
+   SUPABASE BACKEND
+======================================================== */
+
+const SUPABASE_URL =
+    "https://mfgvssuodjtsibfqrcgu.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_GoQbk7khZkkvxJWnLXR8mQ_05xJQjot";
+
+
+const supabase =
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+        ? window.supabase.createClient(
+              SUPABASE_URL,
+              SUPABASE_KEY
+          )
+        : null;
+
+
+function mapProfile(row) {
+
+    return {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        xp: Number(row.xp || 0),
+        discoveries: Array.isArray(row.discoveries)
+            ? row.discoveries
+            : [],
+        achievements: Array.isArray(row.achievements)
+            ? row.achievements
+            : [],
+        rouletteSpins:
+            Number(row.roulette_spins || 0)
+    };
+
+}
+
+
+async function fetchProfile(userId) {
+
+    const { data, error } =
+        await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+
+}
+
+
+async function loadProfileSession() {
+
+    const { data } =
+        await supabase.auth.getSession();
+
+
+    const sessionUser =
+        data &&
+        data.session &&
+        data.session.user;
+
+
+    if (!sessionUser) {
+        return null;
+    }
+
+
+    const profile =
+        await fetchProfile(sessionUser.id);
+
+
+    return profile
+        ? mapProfile(profile)
+        : null;
+
+}
+
+
+function syncProfile() {
+
+    if (!supabase || !currentUser) {
+        return Promise.resolve();
+    }
+
+    return supabase
+        .from("profiles")
+        .update({
+            name: currentUser.name,
+            xp: currentUser.xp,
+            discoveries: currentUser.discoveries,
+            achievements: currentUser.achievements,
+            roulette_spins: currentUser.rouletteSpins
+        })
+        .eq("id", currentUser.id);
+
+}
+
+
+function saveCurrentUser() {
+
+    saveStorage(
+        "teaquest_currentUser",
+        currentUser
+    );
+
+    syncProfile();
+
+}
+
+
+async function restoreSession() {
+
+    if (!supabase) {
+
+        currentUser =
+            getStorage("teaquest_currentUser", null);
+
+        return;
+
+    }
+
+
+    try {
+
+        currentUser =
+            await loadProfileSession();
+
+    } catch (error) {
+
+        currentUser =
+            getStorage("teaquest_currentUser", null);
+
+        return;
+
+    }
+
+
+    if (currentUser) {
+
+        saveStorage(
+            "teaquest_currentUser",
+            currentUser
+        );
+
+    } else {
+
+        localStorage.removeItem(
+            "teaquest_currentUser"
+        );
+
+    }
+
+}
+
+
 function normalizeUser(user) {
 
     if (!user) return user;
@@ -593,10 +759,7 @@ function discoverTea(productId) {
         users
     );
 
-    saveStorage(
-        "teaquest_currentUser",
-        currentUser
-    );
+    saveCurrentUser();
 
 
     toast(
@@ -787,10 +950,7 @@ function checkAchievements() {
             users
         );
 
-        saveStorage(
-            "teaquest_currentUser",
-            currentUser
-        );
+        saveCurrentUser();
 
         renderProfile();
 
@@ -803,7 +963,7 @@ function checkAchievements() {
    INITIALIZATION
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     initializeNavigation();
 
@@ -828,6 +988,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeRoulette();
 
     initializeOracle();
+
+
+    await restoreSession();
+
 
     renderEverything();
 
@@ -2056,22 +2220,25 @@ async function handleAuthentication(event) {
 
     if (authMode === "login") {
 
-        const user =
-            users.find(
-                item =>
-                    item.email === email
+        if (!supabase) {
+
+            toast(
+                "BACKEND OFFLINE",
+                "Cannot reach the server. Try again later."
             );
 
+            return;
+        }
 
-        const valid =
-            user &&
-            await verifyPassword(
-                user,
+
+        const { data, error } =
+            await supabase.auth.signInWithPassword({
+                email,
                 password
-            );
+            });
 
 
-        if (!valid) {
+        if (error || !data.user) {
 
             toast(
                 "LOGIN FAILED",
@@ -2082,25 +2249,33 @@ async function handleAuthentication(event) {
         }
 
 
-        normalizeUser(user);
+        let profile = null;
+
+        try {
+
+            profile =
+                await fetchProfile(data.user.id);
+
+        } catch (profileError) {
+
+            profile = null;
+
+        }
 
 
-        currentUser = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            xp: user.xp,
-            discoveries: user.discoveries,
-            achievements: user.achievements,
-            rouletteSpins: user.rouletteSpins
-        };
+        if (!profile) {
+
+            toast(
+                "LOGIN FAILED",
+                "Player profile not found."
+            );
+
+            return;
+        }
 
 
-        saveStorage(
-            "teaquest_users",
-            users
-        );
+        currentUser = mapProfile(profile);
+
 
         saveStorage(
             "teaquest_currentUser",
@@ -2119,11 +2294,11 @@ async function handleAuthentication(event) {
 
         toast(
             "WELCOME BACK",
-            `Welcome, ${user.name}.`
+            `Welcome, ${currentUser.name}.`
         );
 
 
-        if (user.role === "admin") {
+        if (currentUser.role === "admin") {
 
             navigateTo("admin");
 
@@ -2155,69 +2330,66 @@ async function handleAuthentication(event) {
     }
 
 
-    if (
-        users.some(
-            user =>
-                user.email === email
-        )
-    ) {
+    if (!supabase) {
 
         toast(
-            "ACCOUNT EXISTS",
-            "That email is already registered."
+            "BACKEND OFFLINE",
+            "Cannot reach the server. Try again later."
         );
 
         return;
     }
 
 
-    const newUser = {
-
-        id:
-            `user-${Date.now()}`,
-
-        name,
-
-        email,
-
-        passwordHash:
-            await hashPassword(password),
-
-        role: "customer",
-
-        xp: 0,
-
-        discoveries: [],
-
-        achievements: [],
-
-        rouletteSpins: 0,
-
-        createdAt:
-            new Date().toISOString()
-
-    };
+    const { data, error } =
+        await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: { name }
+            }
+        });
 
 
-    users.push(newUser);
+    if (error || !data.user) {
+
+        toast(
+            "SIGNUP FAILED",
+            error
+                ? error.message
+                : "Could not create account."
+        );
+
+        return;
+    }
 
 
-    saveStorage(
-        "teaquest_users",
-        users
-    );
+    let profile = null;
+
+    try {
+
+        profile =
+            await fetchProfile(data.user.id);
+
+    } catch (profileError) {
+
+        profile = null;
+
+    }
 
 
-    currentUser = {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        xp: newUser.xp,
-        discoveries: newUser.discoveries,
-        achievements: newUser.achievements,
-        rouletteSpins: newUser.rouletteSpins
-    };
+    currentUser = profile
+        ? mapProfile(profile)
+        : {
+              id: data.user.id,
+              name,
+              email,
+              role: "player",
+              xp: 0,
+              discoveries: [],
+              achievements: [],
+              rouletteSpins: 0
+          };
 
 
     saveStorage(
@@ -2246,7 +2418,11 @@ async function handleAuthentication(event) {
 }
 
 
-function logout() {
+async function logout() {
+
+    if (supabase) {
+        await supabase.auth.signOut();
+    }
 
     currentUser = null;
 
@@ -2777,10 +2953,7 @@ function submitOrder(event) {
         );
 
 
-        saveStorage(
-            "teaquest_currentUser",
-            currentUser
-        );
+        saveCurrentUser();
 
 
         const newLevel =
@@ -3854,10 +4027,7 @@ function toggleUserRole(userId) {
         currentUser.role =
             user.role;
 
-        saveStorage(
-            "teaquest_currentUser",
-            currentUser
-        );
+        saveCurrentUser();
 
         updateNavigation();
 
@@ -4999,10 +5169,7 @@ function revealRouletteResult(product) {
                 users
             );
 
-            saveStorage(
-                "teaquest_currentUser",
-                currentUser
-            );
+            saveCurrentUser();
 
         }
 
@@ -5430,32 +5597,3 @@ if (!Array.isArray(orders)) {
 users = users.map(normalizeUser);
 
 saveStorage("teaquest_users", users);
-
-if (currentUser) {
-
-    normalizeUser(currentUser);
-
-
-    const storedUser =
-        users.find(
-            item => item.id === currentUser.id
-        );
-
-    if (storedUser) {
-
-        normalizeUser(storedUser);
-
-        currentUser.discoveries = storedUser.discoveries;
-
-        currentUser.achievements = storedUser.achievements;
-
-        currentUser.rouletteSpins = storedUser.rouletteSpins;
-
-        currentUser.xp = storedUser.xp;
-
-    }
-
-
-    saveStorage("teaquest_currentUser", currentUser);
-
-}
