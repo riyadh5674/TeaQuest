@@ -350,13 +350,13 @@ function saveStorage(key, value) {
 ======================================================== */
 
 const SUPABASE_URL =
-    "https://mfgvssuodjtsibfqrcgu.supabase.co";
+    "https://mfgvssuodjtsibfqrcgu.db.co";
 
 const SUPABASE_KEY =
     "sb_publishable_GoQbk7khZkkvxJWnLXR8mQ_05xJQjot";
 
 
-const supabase =
+const db =
     window.supabase &&
     typeof window.supabase.createClient === "function"
         ? window.supabase.createClient(
@@ -390,7 +390,7 @@ function mapProfile(row) {
 async function fetchProfile(userId) {
 
     const { data, error } =
-        await supabase
+        await db
             .from("profiles")
             .select("*")
             .eq("id", userId)
@@ -435,7 +435,7 @@ async function ensureProfile(authUser) {
             .split("@")[0];
 
 
-    await supabase
+    await db
         .from("profiles")
         .upsert({
             id: authUser.id,
@@ -452,7 +452,7 @@ async function ensureProfile(authUser) {
 async function loadProfileSession() {
 
     const { data } =
-        await supabase.auth.getSession();
+        await db.auth.getSession();
 
 
     const sessionUser =
@@ -479,11 +479,11 @@ async function loadProfileSession() {
 
 function syncProfile() {
 
-    if (!supabase || !currentUser) {
+    if (!db || !currentUser) {
         return Promise.resolve();
     }
 
-    return supabase
+    return db
         .from("profiles")
         .update({
             name: currentUser.name,
@@ -511,7 +511,7 @@ function saveCurrentUser() {
 
 async function restoreSession() {
 
-    if (!supabase) {
+    if (!db) {
 
         currentUser =
             getStorage("teaquest_currentUser", null);
@@ -2263,7 +2263,7 @@ async function handleAuthentication(event) {
 
     if (authMode === "login") {
 
-        if (!supabase) {
+        if (!db) {
 
             toast(
                 "BACKEND OFFLINE",
@@ -2275,7 +2275,7 @@ async function handleAuthentication(event) {
 
 
         const { data, error } =
-            await supabase.auth.signInWithPassword({
+            await db.auth.signInWithPassword({
                 email,
                 password
             });
@@ -2373,7 +2373,7 @@ async function handleAuthentication(event) {
     }
 
 
-    if (!supabase) {
+    if (!db) {
 
         toast(
             "BACKEND OFFLINE",
@@ -2385,7 +2385,7 @@ async function handleAuthentication(event) {
 
 
     const { data, error } =
-        await supabase.auth.signUp({
+        await db.auth.signUp({
             email,
             password,
             options: {
@@ -2463,8 +2463,8 @@ async function handleAuthentication(event) {
 
 async function logout() {
 
-    if (supabase) {
-        await supabase.auth.signOut();
+    if (db) {
+        await db.auth.signOut();
     }
 
     currentUser = null;
