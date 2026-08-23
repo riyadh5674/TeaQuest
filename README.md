@@ -71,7 +71,7 @@ The visual style is **original** and does not use copyrighted game assets or lay
 * **HTML5**
 * **CSS3**
 * **Vanilla JavaScript**
-* **LocalStorage**
+* **Supabase** (auth + Postgres database with Row Level Security)
 
 No frameworks or build tools are required.
 
@@ -84,6 +84,8 @@ TeaQuest/
 ├── index.html
 ├── style.css
 ├── java.js
+├── supabase/
+│   └── schema.sql
 └── README.md
 ```
 
@@ -107,13 +109,9 @@ The website will open locally in your browser.
 
 ## ⚠️ Current Limitations
 
-TeaQuest is currently a **frontend prototype**.
-
-* Authentication uses browser/localStorage for demonstration.
-* Orders are simulated locally.
-* No real payment processing is implemented.
-* Admin authentication is not production-secure.
-* A backend and database can be integrated in a future version.
+* Authentication and data are powered by **Supabase**; some state is cached in localStorage for offline fallback.
+* No real payment processing is implemented (demo checkout).
+* Admin promotion of the first Guild Master is done once via the Supabase SQL editor.
 
 ---
 
@@ -128,10 +126,10 @@ TeaQuest is currently a **frontend prototype**.
 * [x] Tea Roulette
 * [x] Tea Oracle
 * [x] Tea Codex
+* [x] Backend & database integration (Supabase)
+* [x] Secure authentication (Supabase Auth + RLS)
 * [ ] Expanded XP & achievement system
 * [ ] Interactive Tea World
-* [ ] Backend & database integration
-* [ ] Secure authentication
 * [ ] Real payment integration
 
 ---

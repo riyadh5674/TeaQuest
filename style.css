@@ -5140,3 +5140,359 @@ body.night-mode .rarity-common {
     }
 
 }
+/* =========================================================
+   TEAQUEST ARCADE
+======================================================== */
+
+.arcade-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 25px;
+
+}
+
+.arcade-card {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 14px;
+
+    text-align: center;
+
+    padding: 30px 22px;
+
+    background:
+        linear-gradient(
+            145deg,
+            var(--panel-2),
+            var(--panel)
+        );
+
+    border: 4px solid var(--border);
+
+    box-shadow: var(--pixel);
+
+}
+
+.arcade-card:hover {
+
+    transform: translateY(-4px);
+
+    border-color: var(--green-dark);
+
+}
+
+.arcade-art {
+
+    font-size: 52px;
+
+    line-height: 1;
+
+}
+
+.arcade-card h3 {
+
+    font-family: var(--font-pixel);
+
+    font-size: 15px;
+
+    color: var(--mint);
+
+}
+
+.arcade-card p {
+
+    color: var(--muted);
+
+    min-height: 60px;
+
+}
+
+.arcade-best {
+
+    font-size: 17px;
+
+    letter-spacing: 1px;
+
+    color: var(--muted);
+
+}
+
+.arcade-best strong {
+
+    color: var(--gold);
+
+}
+
+
+/* ---------- GAME MODALS ---------- */
+
+.arcade-modal {
+
+    width: min(520px, 100%);
+
+    text-align: center;
+
+}
+
+.arcade-modal-wide {
+
+    width: min(560px, 100%);
+
+}
+
+.game-hud {
+
+    display: flex;
+
+    justify-content: center;
+
+    gap: 28px;
+
+    margin-top: 16px;
+
+    flex-wrap: wrap;
+
+}
+
+.game-hud span {
+
+    display: grid;
+
+    gap: 4px;
+
+    font-size: 16px;
+
+    letter-spacing: 2px;
+
+    color: var(--muted);
+
+}
+
+.game-hud strong {
+
+    font-family: var(--font-pixel);
+
+    font-size: 14px;
+
+    color: var(--cream);
+
+}
+
+.game-stage {
+
+    margin-top: 18px;
+
+    background: #0a100d;
+
+    border: 4px solid var(--border);
+
+    box-shadow: var(--pixel);
+
+}
+
+.game-stage canvas {
+
+    display: block;
+
+    width: 100%;
+
+    height: auto;
+
+    image-rendering: pixelated;
+
+    touch-action: none;
+
+}
+
+.game-hint {
+
+    margin-top: 14px;
+
+    font-size: 18px;
+
+    color: var(--muted);
+
+    min-height: 24px;
+
+}
+
+.game-actions {
+
+    margin-top: 16px;
+
+}
+
+
+/* ---------- TEA MEMORY ---------- */
+
+.memory-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 10px;
+
+    margin-top: 18px;
+
+    perspective: 700px;
+
+}
+
+.memory-card {
+
+    aspect-ratio: 3 / 3.4;
+
+    background: transparent;
+
+    border: none;
+
+    padding: 0;
+
+}
+
+.memory-card-inner {
+
+    position: relative;
+
+    display: grid;
+
+    width: 100%;
+
+    height: 100%;
+
+    transform-style: preserve-3d;
+
+    transition: transform .35s;
+
+}
+
+.memory-card.flipped .memory-card-inner {
+
+    transform: rotateY(180deg);
+
+}
+
+.memory-face {
+
+    position: absolute;
+
+    inset: 0;
+
+    display: grid;
+
+    place-items: center;
+
+    backface-visibility: hidden;
+
+    border: 4px solid var(--border);
+
+    box-shadow: var(--pixel);
+
+}
+
+.memory-back {
+
+    background:
+        linear-gradient(
+            145deg,
+            var(--panel-2),
+            var(--panel)
+        );
+
+    font-family: var(--font-pixel);
+
+    font-size: 18px;
+
+    color: var(--green-dark);
+
+}
+
+.memory-front {
+
+    background: var(--bg-2);
+
+    transform: rotateY(180deg);
+
+    font-size: 34px;
+
+}
+
+.memory-card.matched .memory-front {
+
+    border-color: var(--green);
+
+    box-shadow:
+        0 0 0 3px rgba(117, 214, 107, .25),
+        var(--pixel);
+
+}
+
+
+/* ---------- ARCADE RECORDS (PROFILE) ---------- */
+
+.arcade-records {
+
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 18px;
+
+}
+
+.arcade-record {
+
+    display: grid;
+
+    gap: 6px;
+
+    justify-items: center;
+
+    padding: 20px 12px;
+
+    background: var(--panel);
+
+    border: 3px solid var(--border);
+
+    box-shadow: var(--pixel);
+
+    text-align: center;
+
+}
+
+.arcade-record-icon {
+
+    font-size: 30px;
+
+}
+
+.arcade-record-value {
+
+    font-family: var(--font-pixel);
+
+    font-size: 11px;
+
+    color: var(--gold);
+
+}
+
+
+@media (max-width: 900px) {
+
+    .arcade-grid,
+    .arcade-records {
+
+        grid-template-columns: 1fr;
+
+    }
+
+}

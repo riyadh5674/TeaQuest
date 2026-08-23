@@ -70,6 +70,10 @@
             CODEX
         </button>
 
+        <button class="nav-link" data-page="arcade">
+            ARCADE
+        </button>
+
         <button class="nav-link" data-page="about">
             LORE
         </button>
@@ -122,6 +126,7 @@
     <button data-page="home">HOME</button>
     <button data-page="shop">SHOP</button>
     <button data-page="codex">CODEX</button>
+    <button data-page="arcade">ARCADE</button>
     <button data-page="about">LORE</button>
     <button data-page="contact">CONTACT</button>
     <button class="admin-link" data-page="admin">⚙ ADMIN</button>
@@ -450,6 +455,108 @@
 
 
 <!-- =========================================================
+     ARCADE PAGE
+========================================================= -->
+
+<section class="page" id="arcade">
+
+    <div class="page-header">
+
+        <div>
+            <span class="eyebrow">MINI GAMES</span>
+            <h1>THE TEA ARCADE</h1>
+            <p>Earn XP, chase high scores, unlock achievements.</p>
+        </div>
+
+        <div class="admin-status">
+            ● INSERT COIN
+        </div>
+
+    </div>
+
+    <div class="arcade-grid">
+
+        <article class="arcade-card">
+
+            <span class="arcade-art">☕</span>
+
+            <h3>PERFECT BREW</h3>
+
+            <p>
+                Stop the needle in the green zone.
+                Every perfect cup raises the heat.
+            </p>
+
+            <small class="arcade-best">
+                BEST STREAK —
+                <strong id="bestPerfectBrew">0</strong>
+            </small>
+
+            <button
+                class="pixel-button primary"
+                id="playPerfectBrew"
+            >
+                ▶ PLAY
+            </button>
+
+        </article>
+
+        <article class="arcade-card">
+
+            <span class="arcade-art">🍃</span>
+
+            <h3>LEAF CATCH</h3>
+
+            <p>
+                Catch falling leaves in your teacup.
+                Dodge the rocks. Three lives only.
+            </p>
+
+            <small class="arcade-best">
+                BEST SCORE —
+                <strong id="bestLeafCatch">0</strong>
+            </small>
+
+            <button
+                class="pixel-button primary"
+                id="playLeafCatch"
+            >
+                ▶ PLAY
+            </button>
+
+        </article>
+
+        <article class="arcade-card">
+
+            <span class="arcade-art">🃏</span>
+
+            <h3>TEA MEMORY</h3>
+
+            <p>
+                Match every tea pair. Winning a pair
+                discovers that tea in your Codex.
+            </p>
+
+            <small class="arcade-best">
+                FEWEST MOVES —
+                <strong id="bestTeaMemory">—</strong>
+            </small>
+
+            <button
+                class="pixel-button primary"
+                id="playTeaMemory"
+            >
+                ▶ PLAY
+            </button>
+
+        </article>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
      ABOUT / LORE PAGE
 ========================================================= -->
 
@@ -668,6 +775,20 @@
         </div>
 
         <div id="achievementList" class="achievement-grid"></div>
+
+    </div>
+
+
+    <div class="orders-section">
+
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">ARCADE RECORDS</span>
+                <h2>HIGH SCORES</h2>
+            </div>
+        </div>
+
+        <div id="arcadeRecords" class="arcade-records"></div>
 
     </div>
 
@@ -1043,27 +1164,11 @@
                             ⬇ EXPORT BACKUP
                         </button>
 
-                        <button class="pixel-button secondary" id="importDataButton">
-                            ⬆ IMPORT BACKUP
-                        </button>
-
-                        <input
-                            type="file"
-                            id="importDataInput"
-                            accept=".json"
-                            class="hidden-field"
-                        >
-
-                        <button class="pixel-button danger" id="resetDataButton">
-                            ⚠ RESET ALL DATA
-                        </button>
-
                     </div>
 
                     <p class="settings-note">
-                        Export saves products, players and orders as a JSON backup.
-                        Import restores a previous backup. Reset wipes everything
-                        back to factory defaults.
+                        Export downloads the current catalog, orders and players
+                        as a JSON snapshot. Live data lives in Supabase.
                     </p>
 
                 </div>
@@ -1546,6 +1651,180 @@
 
 
 <!-- =========================================================
+     ARCADE — PERFECT BREW MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="perfectBrewModal">
+
+    <div class="modal arcade-modal">
+
+        <button class="modal-close" id="closePerfectBrew">
+            ×
+        </button>
+
+        <span class="eyebrow">ARCADE · TIMING</span>
+
+        <h2>PERFECT BREW</h2>
+
+        <div class="game-hud">
+
+            <span>
+                STREAK
+                <strong id="brewStreak">0</strong>
+            </span>
+
+            <span>
+                BEST
+                <strong id="brewBestHud">0</strong>
+            </span>
+
+            <span>
+                HEAT
+                <strong id="brewHeat">x1</strong>
+            </span>
+
+        </div>
+
+        <div class="game-stage">
+
+            <canvas id="brewCanvas" width="420" height="300"></canvas>
+
+        </div>
+
+        <p class="game-hint" id="brewHint">
+            Press SPACE or tap BREW when the needle is in the green zone.
+        </p>
+
+        <div class="game-actions">
+
+            <button class="pixel-button primary full" id="brewButton">
+                ☕ BREW!
+            </button>
+
+            <button class="pixel-button secondary full hidden-field" id="brewRestart">
+                ↻ PLAY AGAIN
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ARCADE — LEAF CATCH MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="leafCatchModal">
+
+    <div class="modal arcade-modal">
+
+        <button class="modal-close" id="closeLeafCatch">
+            ×
+        </button>
+
+        <span class="eyebrow">ARCADE · REFLEX</span>
+
+        <h2>LEAF CATCH</h2>
+
+        <div class="game-hud">
+
+            <span>
+                SCORE
+                <strong id="leafScore">0</strong>
+            </span>
+
+            <span>
+                LIVES
+                <strong id="leafLives">♥♥♥</strong>
+            </span>
+
+            <span>
+                BEST
+                <strong id="leafBestHud">0</strong>
+            </span>
+
+        </div>
+
+        <div class="game-stage">
+
+            <canvas id="leafCanvas" width="420" height="480"></canvas>
+
+        </div>
+
+        <p class="game-hint" id="leafHint">
+            Move with mouse, touch or ← → keys.
+        </p>
+
+        <div class="game-actions">
+
+            <button class="pixel-button primary full" id="leafStart">
+                ▶ START CATCHING
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ARCADE — TEA MEMORY MODAL
+========================================================= -->
+
+<div class="modal-overlay" id="memoryModal">
+
+    <div class="modal arcade-modal arcade-modal-wide">
+
+        <button class="modal-close" id="closeMemory">
+            ×
+        </button>
+
+        <span class="eyebrow">ARCADE · BRAIN</span>
+
+        <h2>TEA MEMORY</h2>
+
+        <div class="game-hud">
+
+            <span>
+                MOVES
+                <strong id="memoryMoves">0</strong>
+            </span>
+
+            <span>
+                PAIRS
+                <strong id="memoryPairs">0 / 8</strong>
+            </span>
+
+            <span>
+                FEWEST
+                <strong id="memoryBestHud">—</strong>
+            </span>
+
+        </div>
+
+        <div class="memory-grid" id="memoryGrid"></div>
+
+        <p class="game-hint" id="memoryHint">
+            Matched pairs discover their tea in your Codex.
+        </p>
+
+        <div class="game-actions">
+
+            <button class="pixel-button secondary full" id="memoryRestart">
+                ↻ SHUFFLE & RESTART
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
      ORDER DETAILS MODAL
 ========================================================= -->
 
@@ -1590,6 +1869,7 @@
         <button data-page="home">HOME</button>
         <button data-page="shop">SHOP</button>
         <button data-page="codex">CODEX</button>
+        <button data-page="arcade">ARCADE</button>
         <button data-page="about">LORE</button>
         <button data-page="contact">CONTACT</button>
 
@@ -1604,6 +1884,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="java.js"></script>
+<script src="arcade.js"></script>
 
 </body>
 </html>

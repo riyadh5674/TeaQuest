@@ -150,20 +150,6 @@ const defaultProducts = [
 ];
 
 
-const defaultUsers = [
-
-    {
-        id: "admin-001",
-        name: "Guild Master",
-        email: "admin@teaquest.com",
-        password: "admin123",
-        role: "admin",
-        xp: 999
-    }
-
-];
-
-
 const QUESTS = [
 
     {
@@ -266,6 +252,43 @@ const ACHIEVEMENTS = [
         condition: user =>
             products.length > 0 &&
             (user.discoveries || []).length >= products.length
+    },
+
+    {
+        id: "arcade-rookie",
+        name: "ARCADE ROOKIE",
+        description: "Play your first arcade game.",
+        condition: user =>
+            (user.arcadePlays || 0) >= 1
+    },
+
+    {
+        id: "perfect-palate",
+        name: "PERFECT PALATE",
+        description: "Brew 15 perfect cups in a row.",
+        condition: user =>
+            (user.highScores?.["perfect-brew"] || 0) >= 15
+    },
+
+    {
+        id: "leaf-legend",
+        name: "LEAF LEGEND",
+        description: "Score 500 in Leaf Catch.",
+        condition: user =>
+            (user.highScores?.["leaf-catch"] || 0) >= 500
+    },
+
+    {
+        id: "memory-master",
+        name: "MEMORY MASTER",
+        description: "Win Tea Memory in 12 moves or fewer.",
+        condition: user =>
+        {
+            const best =
+                user.highScores?.["tea-memory"] || 0;
+
+            return best > 0 && best <= 12;
+        }
     }
 
 ];
@@ -278,8 +301,7 @@ const ACHIEVEMENTS = [
 let products =
     getStorage("teaquest_products", defaultProducts);
 
-let users =
-    getStorage("teaquest_users", defaultUsers);
+let customers = [];
 
 let cart =
     getStorage("teaquest_cart", []);
@@ -292,6 +314,10 @@ let orders =
 
 let currentUser =
     getStorage("teaquest_currentUser", null);
+
+if (currentUser) {
+    normalizeUser(currentUser);
+}
 
 let activeCategory = "all";
 
@@ -356,13 +382,6 @@ const SUPABASE_KEY =
     "sb_publishable_GoQbk7khZkkvxJWnLXR8mQ_05xJQjot";
 
 
-const ADMIN_EMAIL =
-    "admin@teaquest.com";
-
-const ADMIN_PASSWORD =
-    "TeaQuest@2026";
-
-
 const db =
     window.supabase &&
     typeof window.supabase.createClient === "function"
@@ -379,7 +398,7 @@ function mapProfile(row) {
         id: row.id,
         name: row.name,
         email: row.email,
-        role: row.role,
+        role: row.role === "admin" ? "admin" : "player",
         xp: Number(row.xp || 0),
         discoveries: Array.isArray(row.discoveries)
             ? row.discoveries
@@ -388,8 +407,375 @@ function mapProfile(row) {
             ? row.achievements
             : [],
         rouletteSpins:
-            Number(row.roulette_spins || 0)
+            Number(row.roulette_spins || 0),
+        highScores:
+            row.high_scores &&
+            typeof row.high_scores === "object" &&
+            !Array.isArray(row.high_scores)
+                ? row.high_scores
+                : {},
+        arcadePlays:
+            Number(row.arcade_plays || 0)
     };
+
+}
+
+
+function mapProductRow(row) {
+
+    return {
+        id: row.id,
+        name: row.name,
+        category: row.category,
+        price: Number(row.price),
+        icon: row.icon || "🍵",
+        rating: Number(row.rating || 5),
+        rarity: row.rarity || undefined,
+        origin: row.origin || "",
+        flavorNotes: row.flavor_notes || "",
+        moods: Array.isArray(row.moods) ? row.moods : [],
+        flavorProfile: Array.isArray(row.flavor_profile)
+            ? row.flavor_profile
+            : [],
+        strength: row.strength || "medium",
+        description: row.description || ""
+    };
+
+}
+
+
+function mapProductToRow(product) {
+
+    return {
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: Number(product.price),
+        icon: product.icon || "🍵",
+        rating: Number(product.rating || 5),
+        rarity: product.rarity || getProductRarity(product),
+        origin: product.origin || "",
+        flavor_notes: product.flavorNotes || "",
+        moods: product.moods || [],
+        flavor_profile: product.flavorProfile || [],
+        strength: product.strength || "medium",
+        description: product.description || ""
+    };
+
+}
+
+
+function mapOrderRow(row) {
+
+    return {
+        id: row.id,
+        userId: row.user_id,
+        customer: row.customer,
+        address: row.address,
+        phone: row.phone || "",
+        payment: row.payment || "card",
+        total: Number(row.total),
+        status: row.status,
+        createdAt: row.created_at,
+
+        items: (row.order_items || []).map(item => ({
+            productId: item.product_id,
+            name: item.name,
+            price: Number(item.price),
+            quantity: item.quantity
+        }))
+
+    };
+
+}
+
+
+async function fetchProducts() {
+
+    if (!db) return false;
+
+    const { data, error } =
+        await db
+            .from("products")
+            .select("*")
+            .order("created_at", { ascending: true });
+
+
+    if (error) {
+
+        console.warn("Failed to load products", error);
+
+        return false;
+
+    }
+
+
+    if (!data || !data.length) {
+        return false;
+    }
+
+
+    products = data.map(mapProductRow);
+
+    saveStorage("teaquest_products", products);
+
+    return true;
+
+}
+
+
+async function upsertProductRemote(product) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { error } =
+        await db
+            .from("products")
+            .upsert(mapProductToRow(product));
+
+    if (error) throw error;
+
+}
+
+
+async function deleteProductRemote(productId) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { error } =
+        await db
+            .from("products")
+            .delete()
+            .eq("id", productId);
+
+    if (error) throw error;
+
+}
+
+
+async function fetchOrders() {
+
+    if (!db) return false;
+
+    const { data, error } =
+        await db
+            .from("orders")
+            .select("*, order_items(*)")
+            .order("created_at", { ascending: true });
+
+
+    if (error) {
+
+        console.warn("Failed to load orders", error);
+
+        return false;
+
+    }
+
+
+    orders = (data || []).map(mapOrderRow);
+
+    saveStorage("teaquest_orders", orders);
+
+    return true;
+
+}
+
+
+async function insertOrderRemote(order) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { data, error } =
+        await db
+            .from("orders")
+            .insert({
+                user_id: order.userId,
+                customer: order.customer,
+                address: order.address,
+                phone: order.phone,
+                payment: order.payment,
+                total: order.total,
+                status: order.status
+            })
+            .select()
+            .single();
+
+
+    if (error) throw error;
+
+
+    const rows = order.items.map(item => ({
+        order_id: data.id,
+        product_id: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+    }));
+
+
+    if (rows.length) {
+
+        const { error: itemsError } =
+            await db.from("order_items").insert(rows);
+
+
+        if (itemsError) throw itemsError;
+
+    }
+
+    return data.id;
+
+}
+
+
+async function updateOrderStatusRemote(orderId, status) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { error } =
+        await db
+            .from("orders")
+            .update({ status })
+            .eq("id", orderId);
+
+    if (error) throw error;
+
+}
+
+
+async function deleteOrderRemote(orderId) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { error } =
+        await db
+            .from("orders")
+            .delete()
+            .eq("id", orderId);
+
+    if (error) throw error;
+
+}
+
+
+async function fetchCustomers() {
+
+    if (!db) return false;
+
+    const { data, error } =
+        await db
+            .from("profiles")
+            .select("*")
+            .order("created_at", { ascending: true });
+
+
+    if (error) {
+
+        console.warn("Failed to load customers", error);
+
+        return false;
+
+    }
+
+
+    customers = (data || []).map(mapProfile);
+
+    return true;
+
+}
+
+
+async function updateCustomerRoleRemote(userId, role) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { error } =
+        await db
+            .from("profiles")
+            .update({ role })
+            .eq("id", userId);
+
+    if (error) throw error;
+
+}
+
+
+async function deleteCustomerRemote(userId) {
+
+    if (!db) throw new Error("Backend offline");
+
+    const { error } =
+        await db
+            .from("profiles")
+            .delete()
+            .eq("id", userId);
+
+    if (error) throw error;
+
+}
+
+
+async function fetchFavorites() {
+
+    if (!db || !currentUser) return;
+
+    const { data, error } =
+        await db
+            .from("favorites")
+            .select("product_id")
+            .eq("user_id", currentUser.id);
+
+
+    if (error) {
+
+        console.warn("Failed to load favorites", error);
+
+        return;
+
+    }
+
+
+    favorites = (data || []).map(
+        row => row.product_id
+    );
+
+    saveStorage("teaquest_favorites", favorites);
+
+}
+
+
+async function setFavoriteRemote(productId, active) {
+
+    if (!db || !currentUser) return;
+
+
+    if (!active) {
+
+        const { error } =
+            await db
+                .from("favorites")
+                .delete()
+                .match({
+                    user_id: currentUser.id,
+                    product_id: productId
+                });
+
+        if (error) console.warn(error);
+
+        return;
+
+    }
+
+    const { error } =
+        await db
+            .from("favorites")
+            .upsert({
+                user_id: currentUser.id,
+                product_id: productId
+            });
+
+    if (error) console.warn(error);
 
 }
 
@@ -484,6 +870,9 @@ async function loadProfileSession() {
 }
 
 
+let profileSyncWarned = false;
+
+
 function syncProfile() {
 
     if (!db || !currentUser) {
@@ -497,14 +886,46 @@ function syncProfile() {
             xp: currentUser.xp,
             discoveries: currentUser.discoveries,
             achievements: currentUser.achievements,
-            roulette_spins: currentUser.rouletteSpins
+            roulette_spins: currentUser.rouletteSpins,
+            high_scores: currentUser.highScores || {},
+            arcade_plays: currentUser.arcadePlays || 0
         })
-        .eq("id", currentUser.id);
+        .eq("id", currentUser.id)
+        .then(({ error }) => {
+
+            if (error && !profileSyncWarned) {
+
+                profileSyncWarned = true;
+
+                toast(
+                    "SYNC FAILED",
+                    "Progress could not reach the server."
+                );
+
+            }
+
+        })
+        .catch(() => {
+
+            if (!profileSyncWarned) {
+
+                profileSyncWarned = true;
+
+                toast(
+                    "OFFLINE",
+                    "Progress will sync when you reconnect."
+                );
+
+            }
+
+        });
 
 }
 
 
 function saveCurrentUser() {
+
+    normalizeUser(currentUser);
 
     saveStorage(
         "teaquest_currentUser",
@@ -519,29 +940,30 @@ function saveCurrentUser() {
 async function restoreSession() {
 
     if (!db) {
-
-        currentUser =
-            getStorage("teaquest_currentUser", null);
-
         return;
-
     }
 
+    let sessionUser = null;
 
     try {
 
-        currentUser =
+        sessionUser =
             await loadProfileSession();
+
+        currentUser = sessionUser;
 
     } catch (error) {
 
         currentUser =
             getStorage("teaquest_currentUser", null);
 
+        if (currentUser) {
+            normalizeUser(currentUser);
+        }
+
         return;
 
     }
-
 
     if (currentUser) {
 
@@ -555,6 +977,33 @@ async function restoreSession() {
         localStorage.removeItem(
             "teaquest_currentUser"
         );
+
+    }
+
+}
+
+
+async function loadServerData() {
+
+    if (!db) return;
+
+    await fetchProducts();
+
+    if (currentUser) {
+
+        await Promise.all([
+            fetchFavorites(),
+            fetchOrders()
+        ]);
+
+    }
+
+    if (
+        currentUser &&
+        currentUser.role === "admin"
+    ) {
+
+        await fetchCustomers();
 
     }
 
@@ -580,6 +1029,17 @@ function normalizeUser(user) {
 
     if (typeof user.xp !== "number") {
         user.xp = 0;
+    }
+
+
+    if (!user.highScores ||
+        typeof user.highScores !== "object" ||
+        Array.isArray(user.highScores)) {
+        user.highScores = {};
+    }
+
+    if (typeof user.arcadePlays !== "number") {
+        user.arcadePlays = 0;
     }
 
 
@@ -611,91 +1071,23 @@ function escapeHTML(value) {
 }
 
 
+function shortOrderId(id) {
+
+    const text =
+        String(id || "");
+
+    if (text.length <= 10) {
+        return text;
+    }
+
+    return `#${text.replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase()}`;
+
+}
+
+
 /* =========================================================
-   SECURITY — PASSWORD HASHING
-========================================================= */
-
-async function hashPassword(password) {
-
-    const encoded =
-        new TextEncoder().encode(
-            `${password}::teaquest-salt`
-        );
-
-    try {
-
-        if (window.crypto && crypto.subtle) {
-
-            const digest =
-                await crypto.subtle.digest(
-                    "SHA-256",
-                    encoded
-                );
-
-            return Array.from(
-                new Uint8Array(digest)
-            ).map(byte =>
-                byte.toString(16).padStart(2, "0")
-            ).join("");
-
-        }
-
-    } catch (error) {
-
-        console.warn(
-            "Web Crypto unavailable, using fallback hash",
-            error
-        );
-
-    }
-
-    let fallback = 2166136261;
-
-    for (const byte of encoded) {
-
-        fallback ^= byte;
-
-        fallback =
-            Math.imul(fallback, 16777619);
-
-    }
-
-    return `fnv-${(fallback >>> 0).toString(16)}`;
-
-}
-
-
-async function verifyPassword(user, password) {
-
-    const hash =
-        await hashPassword(password);
-
-
-    if (user.passwordHash) {
-        return user.passwordHash === hash;
-    }
-
-
-    if (user.password === password) {
-
-        user.passwordHash = hash;
-
-        delete user.password;
-
-        saveStorage(
-            "teaquest_users",
-            users
-        );
-
-        return true;
-
-    }
-
-
-    return false;
-
-}
-
+   RARITY & PROGRESSION
+======================================================== */
 
 function getProductRarity(product) {
 
@@ -767,47 +1159,27 @@ function discoverTea(productId) {
     if (!product) return;
 
 
-    const user =
-        users.find(
-            item => item.id === currentUser.id
-        );
-
-    if (!user) return;
+    normalizeUser(currentUser);
 
 
-    normalizeUser(user);
-
-
-    if (user.discoveries.includes(productId)) {
+    if (currentUser.discoveries.includes(productId)) {
         return;
     }
 
 
-    user.discoveries.push(productId);
+    currentUser.discoveries.push(productId);
 
 
     const previousLevel =
-        getLevelInfo(user.xp).level;
+        getLevelInfo(currentUser.xp).level;
 
-    user.xp =
-        Number(user.xp || 0) +
+    currentUser.xp =
+        Number(currentUser.xp || 0) +
         DISCOVERY_XP_REWARD;
 
     const newLevel =
-        getLevelInfo(user.xp).level;
+        getLevelInfo(currentUser.xp).level;
 
-
-    currentUser.discoveries =
-        user.discoveries;
-
-    currentUser.xp =
-        user.xp;
-
-
-    saveStorage(
-        "teaquest_users",
-        users
-    );
 
     saveCurrentUser();
 
@@ -844,13 +1216,7 @@ function renderCodex() {
 
     const discoveries =
         currentUser
-            ? (
-                users.find(
-                    item => item.id === currentUser.id
-                )?.discoveries ||
-                currentUser.discoveries ||
-                []
-            )
+            ? currentUser.discoveries || []
             : [];
 
 
@@ -954,15 +1320,7 @@ function checkAchievements() {
     if (!currentUser) return;
 
 
-    const user =
-        users.find(
-            item => item.id === currentUser.id
-        );
-
-    if (!user) return;
-
-
-    normalizeUser(user);
+    normalizeUser(currentUser);
 
 
     let unlockedNew = false;
@@ -970,15 +1328,15 @@ function checkAchievements() {
 
     ACHIEVEMENTS.forEach(achievement => {
 
-        if (user.achievements.includes(achievement.id)) {
+        if (currentUser.achievements.includes(achievement.id)) {
             return;
         }
 
-        if (!achievement.condition(user)) {
+        if (!achievement.condition(currentUser)) {
             return;
         }
 
-        user.achievements.push(achievement.id);
+        currentUser.achievements.push(achievement.id);
 
         unlockedNew = true;
 
@@ -991,14 +1349,6 @@ function checkAchievements() {
 
 
     if (unlockedNew) {
-
-        currentUser.achievements =
-            user.achievements;
-
-        saveStorage(
-            "teaquest_users",
-            users
-        );
 
         saveCurrentUser();
 
@@ -1041,6 +1391,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     await restoreSession();
+
+    await loadServerData();
 
 
     renderEverything();
@@ -1141,6 +1493,7 @@ function showPage(page, updateHash = true) {
         "home",
         "shop",
         "codex",
+        "arcade",
         "about",
         "contact",
         "profile",
@@ -1329,11 +1682,14 @@ function renderShopProducts() {
                 activeCategory === "all" ||
                 product.category === activeCategory;
 
-            const searchable =
-                `${product.name}
-                 ${product.description}
-                 ${product.category}`
-                    .toLowerCase();
+            const searchable = [
+                product.name,
+                product.description,
+                product.category
+            ]
+                .join(" ")
+                .replace(/\s+/g, " ")
+                .toLowerCase();
 
             const matchesSearch =
                 !search ||
@@ -1723,7 +2079,7 @@ function renderCart() {
                         <div class="quantity-controls">
 
                             <button
-                                data-quantity="${product.id}"
+                                data-quantity="${escapeHTML(product.id)}"
                                 data-change="-1"
                             >
                                 −
@@ -1734,7 +2090,7 @@ function renderCart() {
                             </span>
 
                             <button
-                                data-quantity="${product.id}"
+                                data-quantity="${escapeHTML(product.id)}"
                                 data-change="1"
                             >
                                 +
@@ -1819,7 +2175,11 @@ function initializeFavorites() {
 
 function toggleFavorite(productId) {
 
-    if (favorites.includes(productId)) {
+    const active =
+        favorites.includes(productId);
+
+
+    if (active) {
 
         favorites =
             favorites.filter(
@@ -1847,6 +2207,9 @@ function toggleFavorite(productId) {
         "teaquest_favorites",
         favorites
     );
+
+
+    setFavoriteRemote(productId, !active);
 
 
     updateCounts();
@@ -1916,7 +2279,7 @@ function renderFavorites() {
                     <button
                         class="add-cart"
                         style="margin-top:10px;padding:7px 10px;"
-                        data-fav-add="${product.id}"
+                        data-fav-add="${escapeHTML(product.id)}"
                     >
                         + ADD
                     </button>
@@ -2178,26 +2541,7 @@ function openAdminLogin() {
     setAuthMode("admin");
 
 
-    const emailInput = $("#authEmail");
-
-    if (emailInput && !emailInput.value) {
-
-        emailInput.value =
-            ADMIN_EMAIL;
-
-    }
-
-    const passwordInput =
-        $("#authPassword");
-
-    if (passwordInput && !passwordInput.value) {
-
-        passwordInput.value =
-            ADMIN_PASSWORD;
-
-    }
-
-    $("#authPassword")?.focus();
+    $("#authEmail")?.focus();
 
 }
 
@@ -2400,14 +2744,17 @@ async function handleAuthentication(event) {
         );
 
 
+        await fetchCustomers();
+
+        await fetchOrders();
+
+
         closeModal(
             $("#authModal")
         );
 
 
-        updateNavigation();
-
-        renderProfile();
+        renderEverything();
 
 
         toast(
@@ -2487,14 +2834,23 @@ async function handleAuthentication(event) {
         );
 
 
+        await fetchFavorites();
+
+        await fetchOrders();
+
+
+        if (currentUser.role === "admin") {
+            await fetchCustomers();
+        }
+
+
         closeModal(
             $("#authModal")
         );
 
 
-        updateNavigation();
+        renderEverything();
 
-        renderProfile();
 
         toast(
             "WELCOME BACK",
@@ -2554,7 +2910,6 @@ async function handleAuthentication(event) {
             }
         });
 
-
     if (error || !data.user) {
 
         toast(
@@ -2565,6 +2920,24 @@ async function handleAuthentication(event) {
         );
 
         return;
+
+    }
+
+
+    if (!data.session) {
+
+        closeModal(
+            $("#authModal")
+        );
+
+
+        toast(
+            "CONFIRM YOUR EMAIL",
+            "Check your inbox to activate your account, then log in."
+        );
+
+        return;
+
     }
 
 
@@ -2602,14 +2975,17 @@ async function handleAuthentication(event) {
     );
 
 
+    await fetchFavorites();
+
+    await fetchOrders();
+
+
     closeModal(
         $("#authModal")
     );
 
 
-    updateNavigation();
-
-    renderProfile();
+    renderEverything();
 
     toast(
         "CHARACTER CREATED",
@@ -2630,12 +3006,22 @@ async function logout() {
 
     currentUser = null;
 
+    customers = [];
+
+    favorites =
+        getStorage("teaquest_favorites", []);
+
     localStorage.removeItem(
         "teaquest_currentUser"
     );
 
 
+    await fetchOrders().catch(() => {});
+
+
     updateNavigation();
+
+    renderEverything();
 
     navigateTo("home");
 
@@ -2688,12 +3074,7 @@ function renderQuests() {
     if (!container || !currentUser) return;
 
 
-    const user =
-        users.find(
-            item => item.id === currentUser.id
-        ) || currentUser;
-
-    normalizeUser(user);
+    const user = normalizeUser(currentUser);
 
 
     container.innerHTML =
@@ -2767,12 +3148,7 @@ function renderAchievements() {
     if (!container || !currentUser) return;
 
 
-    const user =
-        users.find(
-            item => item.id === currentUser.id
-        ) || currentUser;
-
-    normalizeUser(user);
+    const user = normalizeUser(currentUser);
 
 
     container.innerHTML =
@@ -2847,6 +3223,11 @@ function renderProfile() {
     renderAchievements();
 
 
+    if (typeof window.renderArcadeRecords === "function") {
+        window.renderArcadeRecords();
+    }
+
+
     const userOrders =
         orders.filter(
             order =>
@@ -2886,7 +3267,7 @@ function renderProfile() {
                     <div>
 
                         <div class="order-id">
-                            ${escapeHTML(order.id)}
+                            ${escapeHTML(shortOrderId(order.id))}
                         </div>
 
                         <div>
@@ -3059,7 +3440,7 @@ function getCartTotal() {
 }
 
 
-function submitOrder(event) {
+async function submitOrder(event) {
 
     event.preventDefault();
 
@@ -3071,9 +3452,11 @@ function submitOrder(event) {
     const order = {
 
         id:
-            `ORDER-${Date.now()
-                .toString()
-                .slice(-6)}`,
+            (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : `local-${Date.now()}-${Math.random()
+                      .toString(16)
+                      .slice(2, 8)}`,
 
         userId:
             currentUser.id,
@@ -3090,23 +3473,22 @@ function submitOrder(event) {
         payment:
             $("#checkoutPayment").value,
 
-        items:
-            cart.map(item => {
+        items: cart.map(item => {
 
-                const product =
-                    products.find(
-                        p =>
-                            p.id === item.productId
-                    );
+            const product =
+                products.find(
+                    p =>
+                        p.id === item.productId
+                );
 
-                return {
-                    productId: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: item.quantity
-                };
+            return {
+                productId: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: item.quantity
+            };
 
-            }),
+        }),
 
         total,
 
@@ -3118,6 +3500,33 @@ function submitOrder(event) {
     };
 
 
+    let remoteId = null;
+
+    let serverError = false;
+
+
+    try {
+
+        remoteId =
+            await insertOrderRemote(order);
+
+    } catch (error) {
+
+        console.warn(
+            "Order sync failed, kept locally",
+            error
+        );
+
+        serverError = true;
+
+    }
+
+
+    if (remoteId) {
+        order.id = remoteId;
+    }
+
+
     orders.push(order);
 
 
@@ -3127,50 +3536,25 @@ function submitOrder(event) {
     );
 
 
-    const userIndex =
-        users.findIndex(
-            user =>
-                user.id === currentUser.id
-        );
+    const previousLevel =
+        getLevelInfo(currentUser.xp).level;
 
 
-    if (userIndex !== -1) {
-
-        const previousLevel =
-            getLevelInfo(
-                users[userIndex].xp
-            ).level;
+    currentUser.xp =
+        Number(currentUser.xp || 0) +
+        ORDER_XP_REWARD;
 
 
-        users[userIndex].xp =
-            Number(users[userIndex].xp || 0) +
-            ORDER_XP_REWARD;
+    saveCurrentUser();
 
 
-        currentUser.xp =
-            users[userIndex].xp;
+    const newLevel =
+        getLevelInfo(currentUser.xp).level;
 
 
-        saveStorage(
-            "teaquest_users",
-            users
-        );
+    if (newLevel > previousLevel) {
 
-
-        saveCurrentUser();
-
-
-        const newLevel =
-            getLevelInfo(
-                currentUser.xp
-            ).level;
-
-
-        if (newLevel > previousLevel) {
-
-            showLevelUp(newLevel);
-
-        }
+        showLevelUp(newLevel);
 
     }
 
@@ -3196,7 +3580,9 @@ function submitOrder(event) {
 
     toast(
         "QUEST COMPLETE ✦",
-        `Order ${order.id} has been created.`
+        serverError
+            ? "Order saved on this device only (offline)."
+            : `Order has been placed.`
     );
 
 
@@ -3356,24 +3742,6 @@ function initializeAdmin() {
         exportBackup
     );
 
-
-    $("#importDataButton")?.addEventListener(
-        "click",
-        () => $("#importDataInput")?.click()
-    );
-
-
-    $("#importDataInput")?.addEventListener(
-        "change",
-        importBackup
-    );
-
-
-    $("#resetDataButton")?.addEventListener(
-        "click",
-        resetAllData
-    );
-
 }
 
 
@@ -3423,10 +3791,12 @@ function renderAdminStats() {
 
 
     $("#adminUsers").textContent =
-        users.filter(
-            user =>
-                user.role === "customer"
-        ).length;
+        currentUser && !customers.length
+            ? 1
+            : customers.filter(
+                  user =>
+                      user.role === "player"
+              ).length;
 
 
     $("#adminProducts").textContent =
@@ -3551,7 +3921,7 @@ function renderAdminRecentOrders() {
                     <div class="admin-order-top">
 
                         <strong>
-                            ${escapeHTML(order.id)}
+                            ${escapeHTML(shortOrderId(order.id))}
                         </strong>
 
                         <span>
@@ -3781,7 +4151,7 @@ function renderAdminOrdersTable() {
 
                     <td>
                         <strong class="order-id">
-                            ${escapeHTML(order.id)}
+                            ${escapeHTML(shortOrderId(order.id))}
                         </strong>
                         <small class="table-sub">
                             ${formatOrderDate(order.createdAt)}
@@ -3894,7 +4264,7 @@ function renderAdminOrdersTable() {
 }
 
 
-function updateOrderStatus(orderId, status) {
+async function updateOrderStatus(orderId, status) {
 
     const order =
         orders.find(
@@ -3904,8 +4274,27 @@ function updateOrderStatus(orderId, status) {
     if (!order) return;
 
 
-    order.status = status;
+    try {
 
+        await updateOrderStatusRemote(orderId, status);
+
+    } catch (error) {
+
+        console.warn(error);
+
+        toast(
+            "UPDATE FAILED",
+            "Could not reach the server."
+        );
+
+        renderAdminOrdersTable();
+
+        return;
+
+    }
+
+
+    order.status = status;
 
     saveStorage(
         "teaquest_orders",
@@ -3920,7 +4309,7 @@ function updateOrderStatus(orderId, status) {
 
     toast(
         "ORDER UPDATED",
-        `${orderId} marked as ${status}.`
+        `${shortOrderId(orderId)} marked as ${status}.`
     );
 
 }
@@ -3937,7 +4326,7 @@ function viewOrderDetails(orderId) {
 
 
     $("#orderModalTitle").textContent =
-        order.id;
+        shortOrderId(order.id);
 
 
     $("#orderDetailsContent").innerHTML = `
@@ -4010,7 +4399,7 @@ function viewOrderDetails(orderId) {
 }
 
 
-function adminDeleteOrder(orderId) {
+async function adminDeleteOrder(orderId) {
 
     const order =
         orders.find(
@@ -4020,8 +4409,26 @@ function adminDeleteOrder(orderId) {
     if (!order) return;
 
 
-    if (!window.confirm(`Delete order ${orderId}?`)) {
+    if (!window.confirm(`Delete order ${shortOrderId(orderId)}?`)) {
         return;
+    }
+
+
+    try {
+
+        await deleteOrderRemote(orderId);
+
+    } catch (error) {
+
+        console.warn(error);
+
+        toast(
+            "DELETE FAILED",
+            "Could not reach the server."
+        );
+
+        return;
+
     }
 
 
@@ -4042,7 +4449,7 @@ function adminDeleteOrder(orderId) {
 
     toast(
         "ORDER DELETED",
-        `${orderId} has been removed.`
+        `${shortOrderId(orderId)} has been removed.`
     );
 
 }
@@ -4056,7 +4463,13 @@ function renderAdminCustomersTable() {
     if (!body) return;
 
 
-    if (!users.length) {
+    const visibleCustomers =
+        currentUser && !customers.length
+            ? [currentUser]
+            : customers;
+
+
+    if (!visibleCustomers.length) {
 
         body.innerHTML = `
             <tr>
@@ -4074,7 +4487,7 @@ function renderAdminCustomersTable() {
 
 
     body.innerHTML =
-        users.map(user => {
+        visibleCustomers.map(user => {
 
             normalizeUser(user);
 
@@ -4095,7 +4508,7 @@ function renderAdminCustomersTable() {
             const roleTag =
                 user.role === "admin"
                     ? '<span class="role-tag admin">ADMIN</span>'
-                    : '<span class="role-tag">CUSTOMER</span>';
+                    : '<span class="role-tag">PLAYER</span>';
 
 
             return `
@@ -4138,7 +4551,7 @@ function renderAdminCustomersTable() {
                                 ? '<small class="table-sub">—</small>'
                                 : `
                                     <button
-                                        title="${user.role === "admin" ? "Demote to customer" : "Promote to admin"}"
+                                        title="${user.role === "admin" ? "Demote to player" : "Promote to admin"}"
                                         data-toggle-role="${escapeHTML(user.id)}"
                                     >
                                         ${user.role === "admin" ? "▼" : "▲"}
@@ -4198,21 +4611,36 @@ function renderAdminCustomersTable() {
 }
 
 
-function toggleUserRole(userId) {
+async function toggleUserRole(userId) {
 
     const user =
-        users.find(
+        customers.find(
             item => item.id === userId
-        );
+        ) ||
+        (currentUser && currentUser.id === userId
+            ? currentUser
+            : null);
 
     if (!user) return;
 
 
-    if (user.email === "admin@teaquest.com") {
+    const nextRole =
+        user.role === "admin"
+            ? "player"
+            : "admin";
+
+
+    try {
+
+        await updateCustomerRoleRemote(userId, nextRole);
+
+    } catch (error) {
+
+        console.warn(error);
 
         toast(
-            "PROTECTED ACCOUNT",
-            "The primary guild master cannot be changed."
+            "UPDATE FAILED",
+            "Could not reach the server."
         );
 
         return;
@@ -4220,16 +4648,12 @@ function toggleUserRole(userId) {
     }
 
 
-    user.role =
-        user.role === "admin"
-            ? "customer"
-            : "admin";
+    user.role = nextRole;
 
 
     if (currentUser.id === userId) {
 
-        currentUser.role =
-            user.role;
+        currentUser.role = nextRole;
 
         saveCurrentUser();
 
@@ -4238,27 +4662,21 @@ function toggleUserRole(userId) {
     }
 
 
-    saveStorage(
-        "teaquest_users",
-        users
-    );
-
-
     renderAdminCustomersTable();
 
 
     toast(
         "ROLE UPDATED",
-        `${user.name} is now ${user.role === "admin" ? "an admin" : "a customer"}.`
+        `${user.name} is now ${nextRole === "admin" ? "an admin" : "a player"}.`
     );
 
 }
 
 
-function adminDeleteUser(userId) {
+async function adminDeleteUser(userId) {
 
     const user =
-        users.find(
+        customers.find(
             item => item.id === userId
         );
 
@@ -4280,26 +4698,47 @@ function adminDeleteUser(userId) {
     }
 
 
-    if (!window.confirm(`Delete player "${user.name}"? Their orders will remain.`)) {
+    if (!window.confirm(`Delete player "${user.name}"? Their profile and orders will be removed. The login account itself must be removed from the Supabase dashboard.`)) {
         return;
     }
 
 
-    users =
-        users.filter(
+    try {
+
+        await deleteCustomerRemote(userId);
+
+    } catch (error) {
+
+        console.warn(error);
+
+        toast(
+            "DELETE FAILED",
+            "Could not reach the server."
+        );
+
+        return;
+
+    }
+
+
+    customers =
+        customers.filter(
             item => item.id !== userId
         );
 
 
-    saveStorage(
-        "teaquest_users",
-        users
+    orders = orders.filter(
+        order => order.userId !== userId
     );
+
+    saveStorage("teaquest_orders", orders);
 
 
     renderAdminCustomersTable();
 
     renderAdminStats();
+
+    renderAdminOrdersTable();
 
 
     toast(
@@ -4337,15 +4776,42 @@ async function changeAdminPassword(event) {
     }
 
 
-    const admin =
-        users.find(
-            item => item.id === currentUser.id
+    if (!db) {
+
+        toast(
+            "BACKEND OFFLINE",
+            "Cannot reach the server."
         );
 
-    if (!admin) return;
+        return;
+
+    }
 
 
-    if (!(await verifyPassword(admin, current))) {
+    const email =
+        currentUser && currentUser.email;
+
+
+    if (!email) {
+
+        toast(
+            "SESSION ERROR",
+            "Please log in again."
+        );
+
+        return;
+
+    }
+
+
+    const { error: verifyError } =
+        await db.auth.signInWithPassword({
+            email,
+            password: current
+        });
+
+
+    if (verifyError) {
 
         toast(
             "WRONG PASSWORD",
@@ -4357,16 +4823,22 @@ async function changeAdminPassword(event) {
     }
 
 
-    admin.passwordHash =
-        await hashPassword(next);
+    const { error } =
+        await db.auth.updateUser({
+            password: next
+        });
 
-    delete admin.password;
 
+    if (error) {
 
-    saveStorage(
-        "teaquest_users",
-        users
-    );
+        toast(
+            "UPDATE FAILED",
+            error.message || "Could not change password."
+        );
+
+        return;
+
+    }
 
 
     event.target.reset();
@@ -4388,7 +4860,7 @@ function exportBackup() {
 
         products,
 
-        users,
+        profile: currentUser,
 
         orders,
 
@@ -4423,129 +4895,6 @@ function exportBackup() {
         "BACKUP EXPORTED",
         "Your data has been downloaded."
     );
-
-}
-
-
-function importBackup(event) {
-
-    const file =
-        event.target.files[0];
-
-    if (!file) return;
-
-
-    const reader =
-        new FileReader();
-
-
-    reader.onload = () => {
-
-        try {
-
-            const data =
-                JSON.parse(reader.result);
-
-
-            if (
-                !Array.isArray(data.products) ||
-                !Array.isArray(data.users)
-            ) {
-                throw new Error("Invalid backup");
-            }
-
-
-            if (!window.confirm("Import this backup? Current data will be replaced.")) {
-                return;
-            }
-
-
-            products =
-                data.products;
-
-            users =
-                data.users;
-
-            orders =
-                Array.isArray(data.orders) ? data.orders : [];
-
-            cart =
-                Array.isArray(data.cart) ? data.cart : [];
-
-            favorites =
-                Array.isArray(data.favorites) ? data.favorites : [];
-
-
-            saveStorage("teaquest_products", products);
-
-            saveStorage("teaquest_users", users);
-
-            saveStorage("teaquest_orders", orders);
-
-            saveStorage("teaquest_cart", cart);
-
-            saveStorage("teaquest_favorites", favorites);
-
-
-            currentUser = null;
-
-            localStorage.removeItem("teaquest_currentUser");
-
-
-            updateNavigation();
-
-            renderEverything();
-
-
-            toast(
-                "BACKUP RESTORED",
-                "Data imported successfully."
-            );
-
-        } catch (error) {
-
-            toast(
-                "IMPORT FAILED",
-                "That file is not a valid TEAQUEST backup."
-            );
-
-        }
-
-        event.target.value = "";
-
-    };
-
-
-    reader.readAsText(file);
-
-}
-
-
-function resetAllData() {
-
-    if (!window.confirm("Reset EVERYTHING? All products, players and orders will be wiped.")) {
-        return;
-    }
-
-
-    if (!window.confirm("Final warning. This cannot be undone.")) {
-        return;
-    }
-
-
-    [
-        "teaquest_products",
-        "teaquest_users",
-        "teaquest_orders",
-        "teaquest_cart",
-        "teaquest_favorites",
-        "teaquest_currentUser"
-    ].forEach(key =>
-        localStorage.removeItem(key)
-    );
-
-
-    location.reload();
 
 }
 
@@ -4632,7 +4981,7 @@ function openAdminProductModal(productId = null) {
 }
 
 
-function saveAdminProduct(event) {
+async function saveAdminProduct(event) {
 
     event.preventDefault();
 
@@ -4671,6 +5020,11 @@ function saveAdminProduct(event) {
     };
 
 
+    let savedProduct = null;
+
+    let isNew = false;
+
+
     if (id) {
 
         const index =
@@ -4680,36 +5034,70 @@ function saveAdminProduct(event) {
             );
 
 
-        if (index !== -1) {
-
-            products[index] = {
-                ...products[index],
-                ...productData
-            };
-
-        }
+        if (index === -1) return;
 
 
-        toast(
-            "DATABASE UPDATED",
-            "Tea item successfully modified."
-        );
+        savedProduct = {
+            ...products[index],
+            ...productData
+        };
 
     } else {
 
-        products.push({
+        isNew = true;
 
+        savedProduct = {
             id:
-                `tea-${Date.now()}`,
-
+                (window.crypto && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : `tea-${Date.now()}`,
+            rarity: getProductRarity({
+                ...productData,
+                price: productData.price
+            }),
+            origin: "",
+            flavorNotes: "",
+            moods: [],
+            flavorProfile: [],
+            strength: "medium",
             ...productData
+        };
 
-        });
+    }
 
+
+    try {
+
+        await upsertProductRemote(savedProduct);
+
+    } catch (error) {
+
+        console.warn(error);
+
+        toast(
+            "SAVE FAILED",
+            error.message || "Could not reach the server."
+        );
+
+        return;
+
+    }
+
+
+    if (isNew) {
+
+        products.push(savedProduct);
 
         toast(
             "NEW TEA CREATED",
             "The tea has entered the marketplace."
+        );
+
+    } else {
+
+        toast(
+            "DATABASE UPDATED",
+            "Tea item successfully modified."
         );
 
     }
@@ -4731,7 +5119,7 @@ function saveAdminProduct(event) {
 }
 
 
-function deleteProduct(productId) {
+async function deleteProduct(productId) {
 
     const product =
         products.find(
@@ -4750,6 +5138,24 @@ function deleteProduct(productId) {
 
 
     if (!confirmed) return;
+
+
+    try {
+
+        await deleteProductRemote(productId);
+
+    } catch (error) {
+
+        console.warn(error);
+
+        toast(
+            "DELETE FAILED",
+            "Could not reach the server."
+        );
+
+        return;
+
+    }
 
 
     products =
@@ -5353,29 +5759,12 @@ function revealRouletteResult(product) {
 
     if (currentUser) {
 
-        const user =
-            users.find(
-                item => item.id === currentUser.id
-            );
+        normalizeUser(currentUser);
 
-        if (user) {
+        currentUser.rouletteSpins =
+            (currentUser.rouletteSpins || 0) + 1;
 
-            normalizeUser(user);
-
-            user.rouletteSpins =
-                (user.rouletteSpins || 0) + 1;
-
-            currentUser.rouletteSpins =
-                user.rouletteSpins;
-
-            saveStorage(
-                "teaquest_users",
-                users
-            );
-
-            saveCurrentUser();
-
-        }
+        saveCurrentUser();
 
     }
 
@@ -5775,14 +6164,10 @@ document.addEventListener(
 
 /* =========================================================
    SAFETY: KEEP DATA VALID
-========================================================= */
+======================================================== */
 
 if (!Array.isArray(products)) {
     products = [...defaultProducts];
-}
-
-if (!Array.isArray(users)) {
-    users = [...defaultUsers];
 }
 
 if (!Array.isArray(cart)) {
@@ -5797,7 +6182,6 @@ if (!Array.isArray(orders)) {
     orders = [];
 }
 
-
-users = users.map(normalizeUser);
-
-saveStorage("teaquest_users", users);
+if (!Array.isArray(customers)) {
+    customers = [];
+}

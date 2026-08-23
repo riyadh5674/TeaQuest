@@ -27,6 +27,10 @@ create table public.profiles (
 
     roulette_spins integer not null default 0,
 
+    high_scores jsonb not null default '{}'::jsonb,
+
+    arcade_plays integer not null default 0,
+
     created_at timestamptz not null default now()
 
 );
@@ -186,8 +190,15 @@ create policy "profiles_update"
     using (id = auth.uid () or public.is_admin ())
     with check (id = auth.uid () or public.is_admin ());
 
+create policy "profiles_delete"
+    on public.profiles for delete
+    using (public.is_admin ());
 
--- Block players from promoting themselves to admin
+
+-- Block players from promoting themselves to admin.
+-- The guard only applies to API requests (which always carry a JWT).
+-- Queries without a JWT (SQL Editor / dashboard) are allowed through,
+-- otherwise bootstrapping the first admin would be impossible.
 
 create function public.prevent_role_escalation ()
 returns trigger
@@ -197,6 +208,7 @@ set search_path = public
 as $$
 begin
     if new.role is distinct from old.role
+       and current_setting ('request.jwt.claims', true) is not null
        and not public.is_admin () then
         raise exception 'Only admins can change roles';
     end if;
