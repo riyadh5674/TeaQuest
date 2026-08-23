@@ -42,6 +42,8 @@ const dmSeenIds =
 
 let lastTavernSendAt = 0;
 
+let lastFriendshipSyncAt = 0;
+
 let currentSearchTerm = "";
 
 
@@ -1322,12 +1324,14 @@ async function sendDmLetter() {
 
     } catch (error) {
 
+        console.error("Tea Letter failed:", error);
+
         toast(
             "LETTER UNDELIVERED",
-            "Only accepted buddies receive Tea Letters."
+            "Buddy list refreshed — try again."
         );
 
-        input.value = body;
+        refreshFriendState();
 
     }
 
@@ -1341,6 +1345,26 @@ async function sendDmLetter() {
 function subscribeRealtime() {
 
     if (!db) return;
+
+
+    tavernChannelScrolls = db
+
+        .channel("buddy-scrolls")
+
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "public",
+                table: "friendships"
+            },
+
+            payload =>
+                queueFriendshipSync(payload)
+
+        )
+
+        .subscribe();
 
 
     tavernChannelFloor = db
@@ -1467,48 +1491,108 @@ function subscribeRealtime() {
 
         .subscribe();
 
-
-    tavernChannelScrolls = db
-
-        .channel("buddy-scrolls")
-
-        .on(
-            "postgres_changes",
-            {
-                event: "INSERT",
-                schema: "public",
-                table: "friendships",
-                filter: `addressee_id=eq.${me()}`
-            },
-
-            payload => {
-
-                if (!payload.new) return;
+}
 
 
-                ensureName(payload.new.requester_id)
+function queueFriendshipSync(payload) {
+
+    const record =
+        payload.new || payload.old || {};
+
+
+    const involved =
+        me() &&
+        (
+            record.requester_id === me() ||
+            record.addressee_id === me()
+        );
+
+    if (!involved) return;
+
+
+    const now =
+        performance.now();
+
+    if (now - lastFriendshipSyncAt < 700) {
+        return;
+    }
+
+    lastFriendshipSyncAt = now;
+
+
+    const wasAlreadyFriend =
+        friendsList.some(friend =>
+            friend.id === record.requester_id ||
+            friend.id === record.addressee_id
+        );
+
+
+    const becameAccepted =
+        Boolean(
+            payload.new &&
+            payload.new.status === "accepted"
+        );
+
+
+    const incomingRequest =
+        Boolean(
+            payload.new &&
+            payload.new.status === "pending" &&
+            payload.new.addressee_id === me()
+        );
+
+
+    refreshFriendState()
+
+
+        .then(() => {
+
+
+            if (incomingRequest) {
+
+
+                const requesterId =
+                    record.requester_id;
+
+
+                ensureName(requesterId)
 
                     .then(() => {
 
-
-                        refreshFriendState();
-
-
                         toast(
                             "BUDDY REQUEST",
-                            `${nameOf(payload.new.requester_id)} wants to be your buddy!`
+                            `${nameOf(requesterId)} wants to be your buddy!`
                         );
-
 
                         window.sfx?.coin?.();
 
                     });
 
+                return;
+
             }
 
-        )
 
-        .subscribe();
+            if (!becameAccepted || wasAlreadyFriend) {
+                return;
+            }
+
+
+            const partnerId =
+                record.requester_id === me()
+                    ? record.addressee_id
+                    : record.requester_id;
+
+
+            toast(
+                "NEW BREW BUDDY!",
+                `${nameOf(partnerId)} joined your party.`
+            );
+
+
+            window.sfx?.achievement?.();
+
+        });
 
 }
 
