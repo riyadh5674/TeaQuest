@@ -31,13 +31,34 @@ The goal is simple: **make buying tea easy while making the experience memorable
 
 ### 🎮 Game-Inspired Experience
 
-* Tea Roulette
+* Tea Roulette (weighted rarity — legendary drops at 6%)
 * Tea Oracle recommendations
-* Tea Codex
-* XP & progression
+* Tea Codex collection
+* XP, levels & progression
 * Quests and achievements
 * Tea discovery system
-* Fantasy-inspired interactive UI
+
+### 🕹️ The Tea Arcade
+
+Three original mini games with XP rewards, achievements and persistent high scores:
+
+* **Perfect Brew** — timing game with rising heat
+* **Leaf Catch** — catch leaves, dodge rocks, three lives
+* **Tea Memory** — pair matching that discovers teas in your Codex
+* Chiptune sound effects synthesized in code (no audio files) with a mute toggle
+* Pixel-confetti celebrations, screen shake and gold flashes for legendary moments
+
+### 🏛️ The Tavern — Social Hub
+
+A real-time social layer for players:
+
+* **Tavern Floor** — global live chat (Supabase Realtime, no refresh)
+* **Brew Buddies** — search players, send/accept friend requests
+* **Tea Letters** — private messaging with unread badges
+* Media messages: images, video, audio and documents (Supabase Storage)
+* Player avatars, live online presence dots and counters
+* Delete your own messages — synced for everyone instantly
+* Privacy by design: only accepted buddies can exchange letters (enforced by database RLS), and the player directory never exposes emails
 
 ### 👤 User & Admin
 
@@ -71,7 +92,8 @@ The visual style is **original** and does not use copyrighted game assets or lay
 * **HTML5**
 * **CSS3**
 * **Vanilla JavaScript**
-* **Supabase** (auth + Postgres database with Row Level Security)
+* **Supabase** (auth, Postgres database with Row Level Security, Storage for media, Realtime for live chat and presence)
+* **Web Audio API** (synthesized chiptune sound effects)
 
 No frameworks or build tools are required.
 
@@ -83,9 +105,12 @@ No frameworks or build tools are required.
 TeaQuest/
 ├── index.html
 ├── style.css
-├── java.js
+├── java.js        # core app: shop, auth, admin, quests
+├── fx.js          # sound engine, confetti, screen juice
+├── arcade.js      # the three mini games + high scores
+├── social.js      # the Tavern: friends, chat, media
 ├── supabase/
-│   └── schema.sql
+│   └── schema.sql # tables, RLS policies, storage, realtime
 └── README.md
 ```
 
@@ -112,6 +137,7 @@ The website will open locally in your browser.
 * Authentication and data are powered by **Supabase**; some state is cached in localStorage for offline fallback.
 * No real payment processing is implemented (demo checkout).
 * Admin promotion of the first Guild Master is done once via the Supabase SQL editor.
+* Tavern media uploads are capped at 8 MB per file.
 
 ---
 
@@ -123,13 +149,18 @@ The website will open locally in your browser.
 * [x] Favorites
 * [x] User profiles
 * [x] Admin dashboard
-* [x] Tea Roulette
+* [x] Tea Roulette (weighted rarity)
 * [x] Tea Oracle
 * [x] Tea Codex
 * [x] Backend & database integration (Supabase)
 * [x] Secure authentication (Supabase Auth + RLS)
-* [ ] Expanded XP & achievement system
-* [ ] Interactive Tea World
+* [x] Expanded XP & achievement system
+* [x] The Tea Arcade — three mini games with high scores
+* [x] Chiptune sound engine & visual juice
+* [x] The Tavern — live chat, friends, private messages, media sharing
+* [ ] Global leaderboards
+* [ ] Daily quests & streaks
+* [ ] Message reactions & typing indicators
 * [ ] Real payment integration
 
 ---
