@@ -891,7 +891,10 @@ async function handleAvatarUpload(file) {
 
         console.error(error);
 
-        toast("AVATAR FAILED", "Upload did not survive the trip.");
+        toast(
+            "AVATAR FAILED",
+            (error.message || "Unknown error").slice(0, 90)
+        );
 
     }
 
@@ -2017,15 +2020,19 @@ async function sendFloorMessage() {
 
             console.error(error);
 
+            const why =
+
+                error.message === "BAD_FILE"
+
+                    ? "Max 8 MB - images, video, audio, PDF or text."
+
+                    : (error.message || "Unknown error").slice(0, 90);
+
             toast(
 
                 "UPLOAD FAILED",
 
-                error.message === "BAD_FILE"
-
-                    ? "Max 8 MB — images, video, audio, PDF or text."
-
-                    : "The raven dropped it. Try again."
+                why
 
             );
 
