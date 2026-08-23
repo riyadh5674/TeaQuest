@@ -76,6 +76,7 @@
 
         <button class="nav-link" data-page="tavern">
             TAVERN
+            <span class="badge hidden-field" id="tavernBadge">0</span>
         </button>
 
         <button class="nav-link" data-page="about">
@@ -610,6 +611,8 @@
 
         <aside class="orders-section tavern-sidebar">
 
+            <div id="crewCard" class="crew-card hidden-field"></div>
+
             <div class="section-heading">
                 <div>
                     <span class="eyebrow">DIRECTORY</span>
@@ -657,9 +660,24 @@
 
             <div id="floorPane" class="tavern-pane">
 
+                <div class="chat-topline">
+
+                    <span class="online-chip">
+                        <span class="presence-dot on"></span>
+                        <strong id="onlineCount">0</strong>
+                        BREWERS ONLINE
+                    </span>
+
+                </div>
+
                 <div id="floorMessages" class="chat-scroll"></div>
 
                 <form id="floorForm" class="chat-composer" autocomplete="off">
+
+                    <button type="button" class="attach-button"
+                            id="floorAttachButton" title="Attach image, video or file">
+                        📎
+                    </button>
 
                     <input
                         type="text"
@@ -672,6 +690,8 @@
 
                 </form>
 
+                <div id="uploadChipFloor" class="upload-chip hidden-field"></div>
+
             </div>
 
             <div id="dmPane" class="tavern-pane hidden-field">
@@ -681,6 +701,11 @@
                 <div id="dmMessages" class="chat-scroll"></div>
 
                 <form id="dmForm" class="chat-composer" autocomplete="off">
+
+                    <button type="button" class="attach-button"
+                            id="dmAttachButton" title="Attach image, video or file">
+                        📎
+                    </button>
 
                     <input
                         type="text"
@@ -692,6 +717,8 @@
                     <button type="submit" class="pixel-button primary">SEND</button>
 
                 </form>
+
+                <div id="uploadChipDm" class="upload-chip hidden-field"></div>
 
             </div>
 
@@ -2028,6 +2055,10 @@
 
 </footer>
 
+
+<input type="file" id="tavernFileInput" class="hidden-field">
+
+<div id="lightbox" class="lightbox hidden-field"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="java.js"></script>

@@ -512,6 +512,10 @@ create policy "dm_insert"
         and public.are_buddies (sender_id, recipient_id)
     );
 
+create policy "dm_delete"
+    on public.direct_messages for delete
+    using (sender_id = auth.uid ());
+
 
 -- ---------------------------------------------------------
 -- 8. TAVERN FLOOR — global chat room
@@ -543,6 +547,10 @@ create policy "tavern_select"
 create policy "tavern_insert"
     on public.tavern_messages for insert
     with check (sender_id = auth.uid ());
+
+create policy "tavern_delete"
+    on public.tavern_messages for delete
+    using (sender_id = auth.uid ());
 
 
 -- ---------------------------------------------------------
@@ -580,6 +588,82 @@ exception
     when duplicate_object then null;
 
 end $$;
+
+
+-- ---------------------------------------------------------
+-- 10. SOCIAL MEDIA KIT — attachments + avatars + storage
+--     (safe to re-run)
+-- ---------------------------------------------------------
+
+alter table public.direct_messages
+    add column if not exists attachment_url text not null default '',
+
+    add column if not exists attachment_type text not null default '',
+
+    add column if not exists attachment_name text not null default '';
+
+
+alter table public.tavern_messages
+    add column if not exists attachment_url text not null default '',
+
+    add column if not exists attachment_type text not null default '',
+
+    add column if not exists attachment_name text not null default '';
+
+
+alter table public.profiles
+    add column if not exists avatar_url text not null default '';
+
+
+create or replace view public.player_directory as
+
+    select id, name, xp, high_scores,
+           arcade_plays, avatar_url
+
+    from public.profiles;
+
+
+revoke all on public.player_directory from anon;
+
+grant select on public.player_directory to authenticated;
+
+
+insert into storage.buckets (id, name, public)
+
+values ('tavern_media', 'tavern_media', true)
+
+on conflict (id) do nothing;
+
+
+create policy "tavern_media_read"
+
+    on storage.objects for select
+
+    using (bucket_id = 'tavern_media');
+
+
+create policy "tavern_media_insert"
+
+    on storage.objects for insert
+    to authenticated
+
+    with check (
+        bucket_id = 'tavern_media'
+        and (storage.foldername (name))[1]
+            = auth.uid ()::text
+    );
+
+
+create policy "tavern_media_delete"
+
+    on storage.objects for delete
+    to authenticated
+
+    using (
+        bucket_id = 'tavern_media'
+        and (storage.foldername (name))[1]
+            = auth.uid ()::text
+    );
 
 
 -- =========================================================
