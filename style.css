@@ -6346,3 +6346,14 @@ body.fx-shake {
 
     text-decoration: underline;
 }
+
+
+/* =========================================================
+   HOTFIX — hidden must ALWAYS win, regardless of
+   source order (lightbox/chips/crew-card set display:flex)
+========================================================= */
+
+.hidden-field {
+
+    display: none !important;
+}
