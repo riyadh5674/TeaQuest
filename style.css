@@ -5574,3 +5574,375 @@ body.fx-shake {
 
     box-shadow: 2px 2px 0 rgba(5,9,7,.35);
 }
+
+
+/* =========================================================
+   THE TAVERN — social hub
+========================================================= */
+
+.tavern-gate {
+
+    text-align: center;
+
+    padding: 48px 24px;
+}
+
+.tavern-gate .arcade-art {
+    font-size: 56px;
+}
+
+.tavern-gate p {
+
+    color: #b8c9b0;
+
+    max-width: 460px;
+
+    margin: 12px auto 20px;
+}
+
+
+.tavern-layout {
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(260px, 340px) 1fr;
+
+    gap: 24px;
+}
+
+
+.tavern-sidebar,
+.tavern-main {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 14px;
+}
+
+
+.tavern-input {
+
+    width: 100%;
+
+    padding: 12px;
+
+    background: #0c1411;
+
+    border: 3px solid #344d3e;
+
+    color: #f4e6bd;
+
+    font-family: "VT323", monospace;
+
+    font-size: 18px;
+}
+
+
+.tavern-input:focus {
+
+    outline: none;
+
+    border-color: #75d66b;
+}
+
+
+.tavern-subheading {
+
+    font-family: "Press Start 2P", monospace;
+
+    font-size: 10px;
+
+    color: #75d66b;
+
+    letter-spacing: 1px;
+
+    margin-top: 8px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+}
+
+
+.tavern-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    max-height: 220px;
+
+    overflow-y: auto;
+}
+
+
+.buddy-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    background: #0c1411;
+
+    border: 2px solid #344d3e;
+
+    padding: 8px 10px;
+
+    font-family: "VT323", monospace;
+
+    font-size: 17px;
+}
+
+
+.buddy-row strong {
+
+    flex: 1;
+
+    color: #f4e6bd;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+.buddy-row small {
+    color: #f5c95d;
+}
+
+
+.buddy-actions {
+
+    display: flex;
+
+    gap: 6px;
+}
+
+
+.tavern-empty {
+
+    color: #5c7261;
+
+    font-family: "VT323", monospace;
+
+    font-size: 16px;
+
+    padding: 6px 2px;
+}
+
+
+.presence-dot {
+
+    width: 9px;
+
+    height: 9px;
+
+    background: #344d3e;
+
+    box-shadow: 2px 2px 0 #050907;
+
+    flex-shrink: 0;
+}
+
+
+.presence-dot.on {
+
+    background: #75d66b;
+
+    animation: presence-pulse 2s steps(2) infinite;
+}
+
+
+@keyframes presence-pulse {
+
+    50% { opacity: .45; }
+}
+
+
+.badge.unread {
+
+    background: #f5c95d;
+
+    color: #17251d;
+}
+
+
+.tavern-tabs {
+
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+}
+
+
+.pixel-button.tiny {
+
+    font-size: 8px;
+
+    padding: 7px 10px;
+}
+
+
+.chat-scroll {
+
+    height: 380px;
+
+    overflow-y: auto;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+
+    background: #0c1411;
+
+    border: 3px solid #344d3e;
+
+    padding: 14px;
+}
+
+
+.dm-header {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    font-family: "Press Start 2P", monospace;
+
+    font-size: 11px;
+
+    color: #f4e6bd;
+}
+
+
+.dm-header small {
+
+    color: #5c7261;
+
+    margin-left: auto;
+}
+
+
+.chat-msg {
+
+    max-width: 78%;
+
+    background: #17251d;
+
+    border: 2px solid #344d3e;
+
+    box-shadow: 3px 3px 0 #050907;
+
+    padding: 8px 10px;
+}
+
+
+.chat-msg.own {
+
+    align-self: flex-end;
+
+    border-color: #75d66b;
+}
+
+
+.chat-meta {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+    font-family: "Press Start 2P", monospace;
+
+    font-size: 8px;
+
+    color: #75d66b;
+
+    margin-bottom: 5px;
+}
+
+
+.chat-meta small {
+
+    color: #5c7261;
+
+    font-family: "VT323", monospace;
+
+    font-size: 13px;
+}
+
+
+.chat-body {
+
+    font-family: "VT323", monospace;
+
+    font-size: 17px;
+
+    color: #e6dcc0;
+
+    word-break: break-word;
+}
+
+
+.chat-composer {
+
+    display: flex;
+
+    gap: 10px;
+}
+
+
+.chat-composer input {
+
+    flex: 1;
+
+    padding: 12px;
+
+    background: #0c1411;
+
+    border: 3px solid #344d3e;
+
+    color: #f4e6bd;
+
+    font-family: "VT323", monospace;
+
+    font-size: 18px;
+}
+
+
+.chat-composer input:focus {
+
+    outline: none;
+
+    border-color: #75d66b;
+}
+
+
+@media (max-width: 900px) {
+
+    .tavern-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-scroll {
+        height: 300px;
+    }
+}

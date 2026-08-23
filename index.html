@@ -74,6 +74,10 @@
             ARCADE
         </button>
 
+        <button class="nav-link" data-page="tavern">
+            TAVERN
+        </button>
+
         <button class="nav-link" data-page="about">
             LORE
         </button>
@@ -131,6 +135,7 @@
     <button data-page="shop">SHOP</button>
     <button data-page="codex">CODEX</button>
     <button data-page="arcade">ARCADE</button>
+    <button data-page="tavern">TAVERN</button>
     <button data-page="about">LORE</button>
     <button data-page="contact">CONTACT</button>
     <button class="admin-link" data-page="admin">⚙ ADMIN</button>
@@ -554,6 +559,143 @@
             </button>
 
         </article>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     TAVERN PAGE — social hub
+========================================================= -->
+
+<section class="page" id="tavern">
+
+    <div class="page-header">
+
+        <div>
+            <span class="eyebrow">SOCIAL HUB</span>
+            <h1>THE TAVERN</h1>
+            <p>
+                Meet fellow brewers, trade words,
+                and build your party.
+            </p>
+        </div>
+
+        <div class="admin-status">
+            ● WELCOME, TRAVELER
+        </div>
+
+    </div>
+
+    <div id="tavernGate" class="tavern-gate orders-section hidden-field">
+
+        <span class="arcade-art">🏛️</span>
+
+        <h3>THE DOOR IS FOR MEMBERS</h3>
+
+        <p>
+            Log in or create your character
+            to enter the Tavern Floor,
+            add Brew Buddies and send Tea Letters.
+        </p>
+
+        <button class="pixel-button primary" id="tavernLoginButton">
+            ⚟ LOG IN / SIGN UP
+        </button>
+
+    </div>
+
+    <div id="tavernApp" class="tavern-layout hidden-field">
+
+        <aside class="orders-section tavern-sidebar">
+
+            <div class="section-heading">
+                <div>
+                    <span class="eyebrow">DIRECTORY</span>
+                    <h2>BREW BUDDIES</h2>
+                </div>
+            </div>
+
+            <input
+                type="text"
+                id="buddySearch"
+                class="tavern-input"
+                placeholder="Search players by name..."
+                maxlength="30"
+                autocomplete="off"
+            >
+
+            <div id="searchResults" class="tavern-list"></div>
+
+            <div class="tavern-subheading">
+                FRIEND REQUESTS
+                <span class="badge" id="requestCount">0</span>
+            </div>
+
+            <div id="requestList" class="tavern-list"></div>
+
+            <div class="tavern-subheading">YOUR BUDDIES</div>
+
+            <div id="friendsList" class="tavern-list"></div>
+
+        </aside>
+
+        <main class="orders-section tavern-main">
+
+            <div class="tavern-tabs">
+
+                <button class="pixel-button tavern-tab active" id="tabFloor">
+                    🏛️ TAVERN FLOOR
+                </button>
+
+                <button class="pixel-button tavern-tab hidden-field" id="tabLetters">
+                    ✉ TEA LETTERS
+                </button>
+
+            </div>
+
+            <div id="floorPane" class="tavern-pane">
+
+                <div id="floorMessages" class="chat-scroll"></div>
+
+                <form id="floorForm" class="chat-composer" autocomplete="off">
+
+                    <input
+                        type="text"
+                        id="floorInput"
+                        maxlength="300"
+                        placeholder="Say something to the floor..."
+                    >
+
+                    <button type="submit" class="pixel-button primary">SEND</button>
+
+                </form>
+
+            </div>
+
+            <div id="dmPane" class="tavern-pane hidden-field">
+
+                <div id="dmHeader" class="dm-header"></div>
+
+                <div id="dmMessages" class="chat-scroll"></div>
+
+                <form id="dmForm" class="chat-composer" autocomplete="off">
+
+                    <input
+                        type="text"
+                        id="dmInput"
+                        maxlength="500"
+                        placeholder="Private tea letter..."
+                    >
+
+                    <button type="submit" class="pixel-button primary">SEND</button>
+
+                </form>
+
+            </div>
+
+        </main>
 
     </div>
 
@@ -1872,9 +2014,10 @@
 
         <button data-page="home">HOME</button>
         <button data-page="shop">SHOP</button>
-        <button data-page="codex">CODEX</button>
-        <button data-page="arcade">ARCADE</button>
-        <button data-page="about">LORE</button>
+    <button data-page="codex">CODEX</button>
+    <button data-page="arcade">ARCADE</button>
+    <button data-page="tavern">TAVERN</button>
+    <button data-page="about">LORE</button>
         <button data-page="contact">CONTACT</button>
 
     </div>
@@ -1892,5 +2035,7 @@
 <script src="fx.js"></script>
 
 <script src="arcade.js"></script>
+
+<script src="social.js"></script>
 </body>
 </html>

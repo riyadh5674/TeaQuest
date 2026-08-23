@@ -372,6 +372,216 @@ values
 on conflict (id) do nothing;
 
 
+-- ---------------------------------------------------------
+-- 5. PLAYER DIRECTORY — safe public info for the Tavern.
+--    Owner-rights view intentionally bypasses profiles RLS,
+--    but exposes ONLY id/name/xp/scores. Never emails/roles.
+-- ---------------------------------------------------------
+
+create view public.player_directory as
+
+    select id, name, xp, high_scores, arcade_plays
+
+    from public.profiles;
+
+
+revoke all on public.player_directory from anon;
+
+grant select on public.player_directory to authenticated;
+
+
+-- ---------------------------------------------------------
+-- 6. FRIENDSHIPS ("Brew Buddies")
+-- ---------------------------------------------------------
+
+create table public.friendships (
+
+    id uuid primary key default gen_random_uuid (),
+
+    requester_id uuid not null
+        references public.profiles (id) on delete cascade,
+
+    addressee_id uuid not null
+        references public.profiles (id) on delete cascade,
+
+    status text not null default 'pending'
+        check (status in ('pending', 'accepted')),
+
+    created_at timestamptz not null default now(),
+
+    unique (requester_id, addressee_id),
+
+    check (requester_id <> addressee_id)
+
+);
+
+
+alter table public.friendships enable row level security;
+
+
+create policy "friendships_select"
+    on public.friendships for select
+    using (
+        requester_id = auth.uid ()
+        or addressee_id = auth.uid ()
+    );
+
+create policy "friendships_insert"
+    on public.friendships for insert
+    with check (requester_id = auth.uid ());
+
+create policy "friendships_update"
+    on public.friendships for update
+    using (addressee_id = auth.uid ())
+    with check (addressee_id = auth.uid () and status = 'accepted');
+
+create policy "friendships_delete"
+    on public.friendships for delete
+    using (
+        requester_id = auth.uid ()
+        or addressee_id = auth.uid ()
+    );
+
+
+-- Helper: are these two players accepted buddies?
+
+create function public.are_buddies (a uuid, b uuid)
+
+returns boolean
+
+language sql
+stable
+security definer
+set search_path = public
+
+as $$
+
+    select exists (
+
+        select 1
+
+        from public.friendships
+
+        where status = 'accepted'
+
+          and (
+              (requester_id = a and addressee_id = b)
+              or (requester_id = b and addressee_id = a)
+          )
+
+    );
+
+$$;
+
+
+-- ---------------------------------------------------------
+-- 7. TEA LETTERS — private messages, buddies only.
+--    The database itself refuses letters between strangers.
+-- ---------------------------------------------------------
+
+create table public.direct_messages (
+
+    id uuid primary key default gen_random_uuid (),
+
+    sender_id uuid not null
+        references public.profiles (id) on delete cascade,
+
+    recipient_id uuid not null
+        references public.profiles (id) on delete cascade,
+
+    body text not null
+        check (char_length (body) between 1 and 500),
+
+    created_at timestamptz not null default now()
+
+);
+
+
+alter table public.direct_messages enable row level security;
+
+
+create policy "dm_select"
+    on public.direct_messages for select
+    using (sender_id = auth.uid () or recipient_id = auth.uid ());
+
+create policy "dm_insert"
+    on public.direct_messages for insert
+    with check (
+        sender_id = auth.uid ()
+        and sender_id <> recipient_id
+        and public.are_buddies (sender_id, recipient_id)
+    );
+
+
+-- ---------------------------------------------------------
+-- 8. TAVERN FLOOR — global chat room
+-- ---------------------------------------------------------
+
+create table public.tavern_messages (
+
+    id uuid primary key default gen_random_uuid (),
+
+    sender_id uuid not null
+        references public.profiles (id) on delete cascade,
+
+    body text not null
+        check (char_length (body) between 1 and 300),
+
+    created_at timestamptz not null default now()
+
+);
+
+
+alter table public.tavern_messages enable row level security;
+
+
+create policy "tavern_select"
+    on public.tavern_messages for select
+    to authenticated
+    using (true);
+
+create policy "tavern_insert"
+    on public.tavern_messages for insert
+    with check (sender_id = auth.uid ());
+
+
+-- ---------------------------------------------------------
+-- 9. REALTIME — live chat feeds (safe to re-run)
+-- ---------------------------------------------------------
+
+do $$ begin
+
+    alter publication supabase_realtime
+        add table public.tavern_messages;
+
+exception
+    when duplicate_object then null;
+
+end $$;
+
+
+do $$ begin
+
+    alter publication supabase_realtime
+        add table public.direct_messages;
+
+exception
+    when duplicate_object then null;
+
+end $$;
+
+
+do $$ begin
+
+    alter publication supabase_realtime
+        add table public.friendships;
+
+exception
+    when duplicate_object then null;
+
+end $$;
+
+
 -- =========================================================
 --  FINAL STEP (run AFTER you sign up on the site):
 --  Make yourself the Guild Master — replace the email below

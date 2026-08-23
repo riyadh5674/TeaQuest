@@ -1424,6 +1424,8 @@ function renderEverything() {
 
     updateCounts();
 
+    window.refreshTavern?.();
+
 }
 
 
@@ -1494,6 +1496,7 @@ function showPage(page, updateHash = true) {
         "shop",
         "codex",
         "arcade",
+        "tavern",
         "about",
         "contact",
         "profile",
@@ -3003,6 +3006,8 @@ async function logout() {
     if (db) {
         await db.auth.signOut();
     }
+
+    window.shutdownTavern?.();
 
     currentUser = null;
 
