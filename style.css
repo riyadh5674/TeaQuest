@@ -5496,3 +5496,81 @@ body.night-mode .rarity-common {
     }
 
 }
+
+
+/* =========================================================
+   FX JUICE — confetti, screen shake, gold flash
+========================================================= */
+
+#screenFlash.fx-gold {
+
+    background: radial-gradient(
+        circle at 50% 45%,
+        rgba(245,201,93,.65),
+        rgba(245,201,93,.22) 55%,
+        transparent 78%
+    );
+}
+
+
+@keyframes fx-shake-kf {
+
+    0% {
+        transform: translate(0, 0);
+    }
+
+    20% {
+        transform: translate(-4px, 2px);
+    }
+
+    40% {
+        transform: translate(4px, -3px);
+    }
+
+    60% {
+        transform: translate(-3px, -2px);
+    }
+
+    80% {
+        transform: translate(2px, 3px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+
+body.fx-shake {
+    animation: fx-shake-kf .32s steps(2, end) 1;
+}
+
+
+.fx-confetti-layer {
+
+    position: fixed;
+
+    inset: 0;
+
+    overflow: hidden;
+
+    pointer-events: none;
+
+    z-index: 10001;
+}
+
+
+.fx-confetti-piece {
+
+    position: absolute;
+
+    top: 0;
+
+    left: 0;
+
+    opacity: 1;
+
+    will-change: transform, opacity;
+
+    box-shadow: 2px 2px 0 rgba(5,9,7,.35);
+}

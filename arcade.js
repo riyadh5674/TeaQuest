@@ -270,6 +270,24 @@ function canvasX(canvas, clientX) {
 }
 
 
+function burstAtElement(element, count) {
+
+    if (!(element instanceof Element)) {
+        return;
+    }
+
+    const rect =
+        element.getBoundingClientRect();
+
+    window.confettiBurst?.(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+        count || 30
+    );
+
+}
+
+
 /* =========================================================
    ARCADE INITIALIZATION
 ======================================================== */
@@ -693,6 +711,8 @@ function brewAttempt() {
 
     if (distance <= brewZone.perfect / 2) {
 
+        window.sfx?.perfect?.();
+
         brewStreakValue++;
 
         brewRunXp += 2;
@@ -722,6 +742,8 @@ function brewAttempt() {
 
     if (distance <= brewZone.width / 2) {
 
+        window.sfx?.bitter?.();
+
         toast(
             "A BITTER SIP",
             "Close, but only the green zone counts."
@@ -740,6 +762,9 @@ function brewAttempt() {
 function endBrewRun() {
 
     stopBrewLoop();
+
+
+    window.sfx?.miss?.();
 
 
     const result =
@@ -762,7 +787,16 @@ function endBrewRun() {
 
 
     if (result.isNewRecord && brewStreakValue > 0) {
+
         message += " NEW RECORD!";
+
+        window.sfx?.record?.();
+
+        burstAtElement(
+            $("#brewCanvas"),
+            30
+        );
+
     }
 
 
@@ -1068,6 +1102,8 @@ function leafStep(now) {
 
                 leafLivesLeft--;
 
+                window.sfx?.hurt?.();
+
                 pulseScreen();
 
                 toast(
@@ -1082,6 +1118,12 @@ function leafStep(now) {
                 }
 
             } else {
+
+                if (item.type === "gold") {
+                    window.sfx?.gold?.();
+                } else {
+                    window.sfx?.grab?.();
+                }
 
                 leafScoreValue +=
                     item.type === "gold" ? 50 : 10;
@@ -1232,6 +1274,9 @@ function endLeafGame() {
     stopLeafLoop();
 
 
+    window.sfx?.gameOver?.();
+
+
     const xpEarned =
         Math.min(
             30,
@@ -1258,7 +1303,16 @@ function endLeafGame() {
 
 
     if (result.isNewRecord && leafScoreValue > 0) {
+
         message += " NEW RECORD!";
+
+        window.sfx?.record?.();
+
+        burstAtElement(
+            $("#leafCanvas"),
+            30
+        );
+
     }
 
 
@@ -1547,6 +1601,7 @@ function attemptMemoryCard(element) {
 
     element.classList.add("flipped");
 
+    window.sfx?.flip?.();
 
     if (!memoryFirstCard) {
 
@@ -1589,6 +1644,8 @@ function attemptMemoryCard(element) {
 
 function handleMemoryMatch() {
 
+    window.sfx?.match?.();
+
     memoryFirstCard.element.classList.add("matched");
 
     memorySecondCard.element.classList.add("matched");
@@ -1622,6 +1679,8 @@ function handleMemoryMatch() {
 function handleMemoryMismatch() {
 
     memoryLockInput = true;
+
+    window.sfx?.bitter?.();
 
 
     const first =
@@ -1669,6 +1728,14 @@ function updateMemoryHud() {
 function finishMemoryGame() {
 
 
+    window.sfx?.victory?.();
+
+    burstAtElement(
+        $("#memoryGrid"),
+        34
+    );
+
+
     let xpEarned = 10;
 
     if (memoryMovesCount <= 14) xpEarned = 30;
@@ -1692,7 +1759,11 @@ function finishMemoryGame() {
 
 
     if (result.isNewRecord) {
+
         message += " NEW RECORD!";
+
+        window.sfx?.record?.();
+
     }
 
 

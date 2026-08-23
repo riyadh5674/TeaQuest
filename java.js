@@ -5612,6 +5612,66 @@ function openRouletteModal() {
 }
 
 
+/* =========================================================
+   TEA ROULETTE
+========================================================= */
+
+const ROULETTE_WEIGHTS = {
+    common: 40,
+    uncommon: 25,
+    rare: 17,
+    epic: 12,
+    legendary: 6
+};
+
+
+function pickWeightedProduct() {
+
+    const pool = [];
+
+    let totalWeight = 0;
+
+
+    products.forEach(product => {
+
+        const weight =
+            ROULETTE_WEIGHTS[
+                getProductRarity(product)
+            ] || 10;
+
+        pool.push({
+            product,
+            weight
+        });
+
+        totalWeight += weight;
+
+    });
+
+
+    if (!pool.length) {
+        return null;
+    }
+
+
+    let roll =
+        Math.random() * totalWeight;
+
+    for (const entry of pool) {
+
+        roll -= entry.weight;
+
+        if (roll <= 0) {
+            return entry.product;
+        }
+
+    }
+
+    return pool[pool.length - 1].product;
+
+}
+
+
 function spinRoulette() {
 
     if (!products.length) return;
@@ -5671,6 +5731,8 @@ function spinRoulette() {
             stage.textContent =
                 spinningProduct.icon;
 
+            window.sfx?.tick?.();
+
             ticks++;
 
 
@@ -5681,15 +5743,9 @@ function spinRoulette() {
                 rouletteIntervalId = null;
 
 
-                const finalProduct =
-                    products[
-                        Math.floor(
-                            Math.random() *
-                            products.length
-                        )
-                    ];
-
-                revealRouletteResult(finalProduct);
+                revealRouletteResult(
+                    pickWeightedProduct()
+                );
 
             }
 
@@ -5754,7 +5810,22 @@ function revealRouletteResult(product) {
         ?.classList.remove("hidden-field");
 
 
-    pulseScreen();
+    if (rarity === "legendary") {
+
+        $("#rouletteTitle").textContent =
+            "✦ LEGENDARY DROP ✦";
+
+        window.sfx?.legendary?.();
+
+        window.legendaryPulse?.();
+
+    } else {
+
+        pulseScreen();
+
+        window.sfx?.coin?.();
+
+    }
 
 
     if (currentUser) {
