@@ -373,25 +373,11 @@ function saveStorage(key, value) {
 
 
 /* =========================================================
-   SUPABASE BACKEND
+   BACKEND (Firebase)
+   The `db` global is defined by tea_db.js (loaded first).
+   It mirrors the app's data API so the rest of the code
+   is unchanged.
 ======================================================== */
-
-const SUPABASE_URL =
-    "https://mfgvssuodjtsibfqrcgu.supabase.co";
-
-const SUPABASE_KEY =
-    "sb_publishable_GoQbk7khZkkvxJWnLXR8mQ_05xJQjot";
-
-
-const db =
-    window.supabase &&
-    typeof window.supabase.createClient === "function"
-        ? window.supabase.createClient(
-              SUPABASE_URL,
-              SUPABASE_KEY
-          )
-        : null;
-
 
 function mapProfile(row) {
 
@@ -1197,14 +1183,29 @@ async function loadServerData() {
 
     if (!db) return;
 
-    const productsLoaded =
+    let productsLoaded =
         await fetchProducts();
 
     if (!productsLoaded) {
 
-        console.warn(
-            "Product fetch failed — running on the local catalog cache."
-        );
+        /* first run: push the built-in catalog into the
+           backend, then fetch it. Falls back to the local
+           cache only if the backend is unreachable. */
+
+        const seeded =
+            await db.seedProducts(defaultProducts);
+
+        if (seeded) {
+            productsLoaded = await fetchProducts();
+        }
+
+        if (!productsLoaded) {
+
+            console.warn(
+                "Product fetch failed — running on the local catalog cache."
+            );
+
+        }
 
     }
 
@@ -3149,12 +3150,12 @@ async function handleAuthentication(event) {
         }
 
 
-        setAuthMode("reset");
+        setAuthMode("login");
 
 
         toast(
-            "CODE SENT ✉",
-            "Check your inbox for the 6-digit reset code."
+            "RESET LINK SENT 📮",
+            "Check your inbox — the link sets a new password."
         );
 
         return;

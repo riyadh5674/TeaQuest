@@ -606,7 +606,7 @@ async function uploadAttachment(file) {
     if (error) throw error;
 
 
-    const { data } = db.storage
+    const { data } = await db.storage
 
         .from("tavern_media")
 
@@ -917,7 +917,7 @@ async function handleAvatarUpload(file) {
         if (error) throw error;
 
 
-        const { data } = db.storage
+        const { data } = await db.storage
 
             .from("tavern_media")
 
