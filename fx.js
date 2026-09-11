@@ -20,8 +20,30 @@ const FX_REDUCED_MOTION =
     ).matches;
 
 
+function fxStorageGet(key) {
+
+    try {
+        return localStorage.getItem(key);
+    } catch (error) {
+        return null;
+    }
+
+}
+
+
+function fxStorageSet(key, value) {
+
+    try {
+        localStorage.setItem(key, value);
+    } catch (error) {
+        /* storage blocked — sound pref just won't persist */
+    }
+
+}
+
+
 let fxMuted =
-    localStorage.getItem(
+    fxStorageGet(
         FX_STORAGE_KEY
     ) === "off";
 
@@ -98,8 +120,12 @@ function tone(options) {
         options.type || "square";
 
 
+    const startFreq =
+        Math.max(1, Number(options.freq) || 440);
+
+
     oscillator.frequency.setValueAtTime(
-        options.freq,
+        startFreq,
         startAt
     );
 
@@ -670,6 +696,17 @@ function legendaryPulse() {
         "fx-shake"
     );
 
+    /* fallback in case the animationend event
+       never fires (e.g. animation renamed) */
+
+    setTimeout(() => {
+
+        document.body.classList.remove(
+            "fx-shake"
+        );
+
+    }, 700);
+
 }
 
 
@@ -773,6 +810,25 @@ showLevelUp = function fxShowLevelUp(level) {
 };
 
 
+/* browsers only allow audio after a user gesture —
+   make sure the context wakes up on the first click */
+
+document.addEventListener(
+    "pointerdown",
+    () => {
+
+        if (
+            fxContext &&
+            fxContext.state === "suspended"
+        ) {
+            fxContext.resume().catch(() => {});
+        }
+
+    },
+    { capture: true }
+);
+
+
 /* subtle UI blip on real button presses */
 
 let fxLastBlip = 0;
@@ -837,7 +893,7 @@ $("#soundButton")?.addEventListener(
 
         fxMuted = !fxMuted;
 
-        localStorage.setItem(
+        fxStorageSet(
             FX_STORAGE_KEY,
             fxMuted ? "off" : "on"
         );

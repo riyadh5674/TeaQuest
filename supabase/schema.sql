@@ -666,6 +666,121 @@ create policy "tavern_media_delete"
     );
 
 
+-- ---------------------------------------------------------
+-- 11. ATOMIC ORDER CREATION — prices computed on the server
+--     The client sends only product ids + quantities.
+--     The database itself looks up real prices, inserts the
+--     order and its items in ONE transaction, and returns
+--     the order id. Safe to re-run.
+-- ---------------------------------------------------------
+
+create or replace function public.create_order (
+    p_customer text,
+    p_address text,
+    p_phone text default '',
+    p_payment text default 'card',
+    p_items jsonb default '[]'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_user uuid := auth.uid ();
+    v_order uuid;
+    v_total numeric(10, 2) := 0;
+    v_item jsonb;
+    v_product record;
+    v_qty integer;
+begin
+    if v_user is null then
+        raise exception 'Not authenticated';
+    end if;
+
+    if p_items is null or jsonb_array_length (p_items) = 0 then
+        raise exception 'Cart is empty';
+    end if;
+
+    if char_length (p_customer) = 0
+       or char_length (p_address) = 0 then
+        raise exception 'Customer and address are required';
+    end if;
+
+    insert into public.orders
+        (user_id, customer, address, phone, payment, total, status)
+    values
+        (v_user, p_customer, p_address,
+         coalesce (p_phone, ''), coalesce (p_payment, 'card'),
+         0, 'PROCESSING')
+    returning id into v_order;
+
+    for v_item in
+        select * from jsonb_array_elements (p_items)
+    loop
+        v_qty := greatest (
+            1,
+            least (99, coalesce ((v_item ->> 'quantity')::int, 1))
+        );
+
+        select id, name, price
+        into v_product
+        from public.products
+        where id = v_item ->> 'product_id';
+
+        if not found then
+            raise exception 'Unknown product %', v_item ->> 'product_id';
+        end if;
+
+        v_total := v_total + v_product.price * v_qty;
+
+        insert into public.order_items
+            (order_id, product_id, name, price, quantity)
+        values
+            (v_order, v_product.id, v_product.name,
+             v_product.price, v_qty);
+    end loop;
+
+    update public.orders
+    set total = v_total
+    where id = v_order;
+
+    return v_order;
+end;
+$$;
+
+
+revoke all on function public.create_order (text, text, text, text, jsonb)
+    from public, anon;
+
+grant execute on function public.create_order (text, text, text, text, jsonb)
+    to authenticated;
+
+
+-- ---------------------------------------------------------
+-- 12. BLOCK SVG UPLOADS — SVG can carry scripts that run
+--     straight from the public bucket URL. Drop the old
+--     policy and recreate it without SVG. Safe to re-run.
+-- ---------------------------------------------------------
+
+drop policy if exists "tavern_media_insert"
+    on storage.objects;
+
+create policy "tavern_media_insert"
+
+    on storage.objects for insert
+
+    to authenticated
+
+    with check (
+        bucket_id = 'tavern_media'
+        and (storage.foldername (name))[1]
+            = auth.uid ()::text
+        and coalesce (metadata ->> 'mimetype', '')
+            <> 'image/svg+xml'
+    );
+
+
 -- =========================================================
 --  FINAL STEP (run AFTER you sign up on the site):
 --  Make yourself the Guild Master — replace the email below
@@ -674,4 +789,8 @@ create policy "tavern_media_delete"
 --  update public.profiles
 --  set role = 'admin'
 --  where email = 'your-email@example.com';
+--
+--  NOTE: after adding section 11 above, orders are priced
+--  server-side automatically. The site falls back to the
+--  old two-step insert only if this RPC is missing.
 -- =========================================================

@@ -24,7 +24,7 @@
 ========================================================= -->
 
 <div id="screenFlash"></div>
-<div id="toastContainer"></div>
+<div id="toastContainer" aria-live="polite"></div>
 
 <div id="levelUpOverlay">
     <div class="level-up-content">
@@ -555,6 +555,31 @@
             <button
                 class="pixel-button primary"
                 id="playTeaMemory"
+            >
+                ▶ PLAY
+            </button>
+
+        </article>
+
+        <article class="arcade-card">
+
+            <span class="arcade-art">⛏️</span>
+
+            <h3>MINECRAFT QUEST</h3>
+
+            <p>
+                A full voxel sandbox. Build, mine, craft,
+                survive the night — Creative or Survival.
+            </p>
+
+            <small class="arcade-best">
+                BEST SCORE —
+                <strong id="bestMinecraftQuest">—</strong>
+            </small>
+
+            <button
+                class="pixel-button primary"
+                id="playMinecraftQuest"
             >
                 ▶ PLAY
             </button>
@@ -1426,7 +1451,7 @@
      AUTH MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="authModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="authModal">
 
     <div class="modal auth-modal">
 
@@ -1476,21 +1501,86 @@
 
             </label>
 
-            <label>
+            <label id="authPasswordLabel">
                 PASSWORD
 
                 <input
                     id="authPassword"
                     type="password"
                     required
-                    minlength="4"
+                    minlength="6"
                     autocomplete="current-password"
                 >
 
             </label>
 
+            <div id="resetCodeGroup" class="hidden-field">
+
+                <label>
+                    RESET CODE
+                    <small class="field-hint">
+                        Check your inbox for the 6-digit code.
+                    </small>
+
+                    <input
+                        id="authResetCode"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
+                        maxlength="6"
+                        placeholder="123456"
+                    >
+
+                </label>
+
+            </div>
+
+            <div id="newPasswordGroup" class="hidden-field">
+
+                <label>
+                    NEW PASSWORD
+
+                    <input
+                        id="authNewPassword"
+                        type="password"
+                        minlength="6"
+                        autocomplete="new-password"
+                    >
+
+                </label>
+
+                <label>
+                    CONFIRM NEW PASSWORD
+
+                    <input
+                        id="authNewPasswordConfirm"
+                        type="password"
+                        minlength="6"
+                        autocomplete="new-password"
+                    >
+
+                </label>
+
+            </div>
+
             <button class="pixel-button primary full" type="submit">
                 <span id="authSubmitText">ENTER WORLD</span>
+            </button>
+
+            <button
+                class="text-button auth-forgot-link"
+                type="button"
+                id="forgotPasswordButton"
+            >
+                FORGOT PASSWORD?
+            </button>
+
+            <button
+                class="text-button auth-forgot-link hidden-field"
+                type="button"
+                id="backToLoginButton"
+            >
+                ← BACK TO LOGIN
             </button>
 
         </form>
@@ -1531,7 +1621,7 @@
      PRODUCT MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="productModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="productModal">
 
     <div class="modal product-modal">
 
@@ -1550,7 +1640,7 @@
      CHECKOUT MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="checkoutModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="checkoutModal">
 
     <div class="modal checkout-modal">
 
@@ -1613,7 +1703,7 @@
      ADMIN PRODUCT MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="adminProductModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="adminProductModal">
 
     <div class="modal">
 
@@ -1686,7 +1776,7 @@
      TEA ROULETTE MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="rouletteModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="rouletteModal">
 
     <div class="modal roulette-modal">
 
@@ -1740,7 +1830,7 @@
      TEA ORACLE MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="oracleModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="oracleModal">
 
     <div class="modal oracle-modal">
 
@@ -1827,7 +1917,7 @@
      ARCADE — PERFECT BREW MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="perfectBrewModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="perfectBrewModal">
 
     <div class="modal arcade-modal">
 
@@ -1889,7 +1979,7 @@
      ARCADE — LEAF CATCH MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="leafCatchModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="leafCatchModal">
 
     <div class="modal arcade-modal">
 
@@ -1947,7 +2037,7 @@
      ARCADE — TEA MEMORY MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="memoryModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="memoryModal">
 
     <div class="modal arcade-modal arcade-modal-wide">
 
@@ -2001,7 +2091,7 @@
      ORDER DETAILS MODAL
 ========================================================= -->
 
-<div class="modal-overlay" id="orderModal">
+<div role="dialog" aria-modal="true" class="modal-overlay" id="orderModal">
 
     <div class="modal">
 
@@ -2066,6 +2156,8 @@
 <script src="fx.js"></script>
 
 <script src="arcade.js"></script>
+
+<script src="minecraft.js"></script>
 
 <script src="social.js"></script>
 </body>

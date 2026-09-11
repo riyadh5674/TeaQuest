@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    TEAQUEST
    PIXEL FANTASY TEA COMMERCE
 ========================================================= */
@@ -589,7 +589,9 @@ body::after {
 
     place-items: center;
 
-    background: var(--red);
+    /* darker red so white text stays readable */
+
+    background: #b8433a;
 
     color: white;
 
@@ -597,7 +599,7 @@ body::after {
 
     font-family: var(--font-pixel);
 
-    font-size: 7px;
+    font-size: 8px;
 }
 
 .badge.bump {
@@ -625,7 +627,7 @@ body::after {
 }
 
 
-/* admin nav link — only visible for admins */
+/* admin nav link â€” only visible for admins */
 
 .nav-link.admin-link,
 .mobile-nav button.admin-link {
@@ -685,7 +687,7 @@ body.is-admin .mobile-nav button.admin-link {
 }
 
 
-/* guild master mode — gold themed auth */
+/* guild master mode â€” gold themed auth */
 
 .auth-modal.admin-mode {
 
@@ -852,6 +854,13 @@ main {
     transform: perspective(350px) rotateX(55deg);
 
     transform-origin: bottom;
+
+    -webkit-mask-image:
+        linear-gradient(
+            to top,
+            black,
+            transparent
+        );
 
     mask-image:
         linear-gradient(
@@ -1925,7 +1934,7 @@ main {
 
     background: #303a34;
 
-    color: #777;
+    color: #9aa8a0;
 
     cursor: not-allowed;
 }
@@ -3587,6 +3596,38 @@ textarea {
     font-size: 18px;
 }
 
+/* forgot-password flow */
+
+.auth-forgot-link {
+
+    margin-top: 14px;
+
+    display: block;
+
+    width: 100%;
+
+    text-align: center;
+
+    cursor: pointer;
+
+    text-decoration: underline;
+
+    text-underline-offset: 3px;
+}
+
+.field-hint {
+
+    display: block;
+
+    color: var(--muted);
+
+    font-family: "VT323", monospace;
+
+    font-size: 15px;
+
+    margin-bottom: 4px;
+}
+
 .auth-switch button {
 
     border: 0;
@@ -3598,35 +3639,6 @@ textarea {
     font-family: var(--font-pixel);
 
     font-size: 7px;
-}
-
-.demo-login {
-
-    margin-top: 25px;
-
-    border-top: 1px solid var(--border);
-
-    padding-top: 17px;
-}
-
-.demo-login strong {
-
-    display: block;
-
-    color: var(--gold);
-
-    font-family: var(--font-pixel);
-
-    font-size: 7px;
-}
-
-.demo-login small {
-
-    color: var(--muted);
-
-    display: block;
-
-    margin-top: 7px;
 }
 
 .hidden-field {
@@ -4023,7 +4035,7 @@ textarea {
 
     position: fixed;
 
-    top: 95px;
+    top: calc(var(--topbar) + 13px);
 
     right: 20px;
 
@@ -4174,7 +4186,7 @@ footer p {
 
 footer small {
 
-    color: #56665c;
+    color: #7f938a;
 
     font-size: 16px;
 }
@@ -4240,7 +4252,10 @@ footer small {
 
 @media (max-width: 720px) {
 
-    :root {
+:root {
+
+    color-scheme: dark;
+
         --topbar: 70px;
     }
 
@@ -4451,7 +4466,7 @@ footer small {
 
 
 /* =========================================================
-   NIGHT MODE — TRUE DARK
+   NIGHT MODE â€” TRUE DARK
    Near-black surfaces, single moss accent
    Toggled via body.night-mode (see java.js)
 ========================================================= */
@@ -4613,7 +4628,7 @@ body.night-mode .map-node.locked {
 
     background: #212826;
 
-    color: #5f6864;
+    color: #8b968f;
 }
 
 
@@ -4683,7 +4698,7 @@ body.night-mode footer {
 
 body.night-mode footer small {
 
-    color: #565e59;
+    color: #7f8d85;
 }
 
 body.night-mode .rarity-common {
@@ -5499,7 +5514,7 @@ body.night-mode .rarity-common {
 
 
 /* =========================================================
-   FX JUICE � confetti, screen shake, gold flash
+   FX JUICE ï¿½ confetti, screen shake, gold flash
 ========================================================= */
 
 #screenFlash.fx-gold {
@@ -5577,7 +5592,7 @@ body.fx-shake {
 
 
 /* =========================================================
-   THE TAVERN � social hub
+   THE TAVERN ï¿½ social hub
 ========================================================= */
 
 .tavern-gate {
@@ -5642,8 +5657,6 @@ body.fx-shake {
 
 
 .tavern-input:focus {
-
-    outline: none;
 
     border-color: #75d66b;
 }
@@ -5732,7 +5745,7 @@ body.fx-shake {
 
 .tavern-empty {
 
-    color: #5c7261;
+    color: #748b7e;
 
     font-family: "VT323", monospace;
 
@@ -5834,13 +5847,15 @@ body.fx-shake {
 
 .dm-header small {
 
-    color: #5c7261;
+    color: #748b7e;
 
     margin-left: auto;
 }
 
 
 .chat-msg {
+
+    position: relative;
 
     max-width: 78%;
 
@@ -5882,7 +5897,7 @@ body.fx-shake {
 
 .chat-meta small {
 
-    color: #5c7261;
+    color: #748b7e;
 
     font-family: "VT323", monospace;
 
@@ -5930,8 +5945,6 @@ body.fx-shake {
 
 .chat-composer input:focus {
 
-    outline: none;
-
     border-color: #75d66b;
 }
 
@@ -5949,7 +5962,7 @@ body.fx-shake {
 
 
 /* =========================================================
-   TAVERN SOCIAL KIT � media, avatars, lightbox
+   TAVERN SOCIAL KIT ï¿½ media, avatars, lightbox
 ========================================================= */
 
 .crew-card {
@@ -6056,15 +6069,10 @@ body.fx-shake {
 }
 
 
-.chat-msg {
-
-    position: relative;
-}
-
-
 .msg-delete {
 
     position: absolute;
+
 
     top: -8px;
 
@@ -6092,8 +6100,20 @@ body.fx-shake {
 }
 
 
-.chat-msg:hover .msg-delete {
+.chat-msg:hover .msg-delete,
+.chat-msg:focus-within .msg-delete {
     opacity: 1;
+}
+
+
+/* no hover on touch devices â€” always show it */
+
+@media (hover: none) {
+
+    .msg-delete {
+        opacity: 1;
+    }
+
 }
 
 
@@ -6349,7 +6369,7 @@ body.fx-shake {
 
 
 /* =========================================================
-   HOTFIX � hidden must ALWAYS win, regardless of
+   HOTFIX ï¿½ hidden must ALWAYS win, regardless of
    source order (lightbox/chips/crew-card set display:flex)
 ========================================================= */
 

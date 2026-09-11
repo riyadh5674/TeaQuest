@@ -42,7 +42,11 @@ const dmSeenIds =
 
 let lastTavernSendAt = 0;
 
+let lastDmSendAt = 0;
+
 let lastFriendshipSyncAt = 0;
+
+let friendshipSyncTimer = null;
 
 let currentSearchTerm = "";
 
@@ -143,14 +147,17 @@ function avatarHtml(playerId, extraClass = "") {
     const url =
         entry && entry.avatar_url;
 
+    const safeUrl =
+        safeMediaUrl(url);
 
-    if (url) {
+
+    if (safeUrl) {
 
         return `
 
             <img class="chat-avatar ${extraClass}"
 
-                 src="${escapeHTML(url)}"
+                 src="${escapeHTML(safeUrl)}"
 
                  alt="">
 
@@ -250,9 +257,6 @@ window.refreshTavern = function () {
 
 async function bootTavern() {
 
-    tavernBooted = true;
-
-
     await loadDirectory();
 
     await refreshFriendState();
@@ -263,6 +267,12 @@ async function bootTavern() {
     subscribePresence();
 
     subscribeRealtime();
+
+
+    /* only mark the tavern ready once the whole
+       boot actually finished */
+
+    tavernBooted = true;
 
 }
 
@@ -387,6 +397,14 @@ function attachmentAllowed(file) {
     }
 
 
+    /* SVGs can carry scripts and execute from the
+       public bucket URL — never accept them */
+
+    if (file.type === "image/svg+xml") {
+        return false;
+    }
+
+
     if (MIME_EXT_MAP[file.type]) {
         return true;
     }
@@ -395,6 +413,51 @@ function attachmentAllowed(file) {
     return file.type.startsWith("image/") ||
            file.type.startsWith("video/") ||
            file.type.startsWith("audio/");
+
+}
+
+
+/* only render media that points at our own
+   Supabase storage bucket over https */
+
+function safeMediaUrl(rawUrl) {
+
+    const value =
+        String(rawUrl || "").trim();
+
+    if (!value) return "";
+
+    try {
+
+        const parsed =
+            new URL(value, location.href);
+
+        const base =
+            new URL(SUPABASE_URL, location.href);
+
+        if (parsed.protocol !== "https:") {
+            return "";
+        }
+
+        if (parsed.origin !== base.origin) {
+            return "";
+        }
+
+        if (
+            !parsed.pathname.startsWith(
+                "/storage/v1/object/public/tavern_media/"
+            )
+        ) {
+            return "";
+        }
+
+        return parsed.href;
+
+    } catch (error) {
+
+        return "";
+
+    }
 
 }
 
@@ -414,67 +477,81 @@ async function shrinkImage(file) {
     if (file.size < 300 * 1024) {
         return file;
     }
-
-
     try {
 
         const bitmap =
             await createImageBitmap(file);
 
-        const longest =
-            Math.max(bitmap.width, bitmap.height);
+        let result = file;
 
-        if (longest <= 1600) {
-            return file;
+        try {
+
+            const longest =
+                Math.max(bitmap.width, bitmap.height);
+
+            if (longest > 1600) {
+
+                const scale =
+                    1600 / longest;
+
+                const canvas =
+                    document.createElement("canvas");
+
+                canvas.width =
+                    Math.round(bitmap.width * scale);
+
+                canvas.height =
+                    Math.round(bitmap.height * scale);
+
+                canvas.getContext("2d")
+
+                    .drawImage(
+                        bitmap,
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    );
+
+
+                const blob =
+
+                    await new Promise(resolve =>
+
+                        canvas.toBlob(
+
+                            resolve,
+
+                            "image/jpeg",
+
+                            0.85
+
+                        )
+
+                    );
+
+
+                if (blob) {
+
+                    result = new File(
+                        [blob],
+                        file.name.replace(/\.\w+$/, "") +
+                            ".jpg",
+                        { type: "image/jpeg" }
+                    );
+
+                }
+
+            }
+
+        } finally {
+
+            bitmap.close();
+
         }
 
-        const scale =
-            1600 / longest;
 
-        const canvas =
-            document.createElement("canvas");
-
-        canvas.width =
-            Math.round(bitmap.width * scale);
-
-        canvas.height =
-            Math.round(bitmap.height * scale);
-
-        canvas.getContext("2d")
-
-            .drawImage(
-                bitmap,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-
-        const blob =
-
-            await new Promise(resolve =>
-
-                canvas.toBlob(
-                    resolve,
-                    "image/jpeg",
-                    0.85
-                )
-
-            );
-
-        bitmap.close();
-
-
-        if (!blob) return file;
-
-
-        return new File(
-            [blob],
-            file.name.replace(/\.\w+$/, "") +
-                ".jpg",
-            { type: "image/jpeg" }
-        );
+        return result;
 
     } catch (error) {
 
@@ -483,8 +560,6 @@ async function shrinkImage(file) {
     }
 
 }
-
-
 async function uploadAttachment(file) {
 
     if (!db || !me()) {
@@ -780,31 +855,37 @@ async function handleAvatarUpload(file) {
         canvas.height = size;
 
 
-        const side = Math.min(bitmap.width, bitmap.height);
+        try {
 
-        canvas.getContext("2d").drawImage(
+            const side = Math.min(bitmap.width, bitmap.height);
 
-            bitmap,
+            canvas.getContext("2d").drawImage(
 
-            (bitmap.width - side) / 2,
+                bitmap,
 
-            (bitmap.height - side) / 2,
+                (bitmap.width - side) / 2,
 
-            side,
+                (bitmap.height - side) / 2,
 
-            side,
+                side,
 
-            0,
+                side,
 
-            0,
+                0,
 
-            size,
+                0,
 
-            size
+                size,
 
-        );
+                size
 
-        bitmap.close();
+            );
+
+        } finally {
+
+            bitmap.close();
+
+        }
 
 
         const blob = await new Promise(resolve =>
@@ -846,13 +927,16 @@ async function handleAvatarUpload(file) {
         const url = data.publicUrl;
 
 
-        await db
+        const { error: profileError } = await db
 
             .from("profiles")
 
             .update({ avatar_url: url })
 
             .eq("id", me());
+
+
+        if (profileError) throw profileError;
 
 
         if (directoryMap[me()]) {
@@ -914,15 +998,21 @@ function openLightbox(url, type) {
     if (!box) return;
 
 
+    const safeUrl =
+        safeMediaUrl(url);
+
+    if (!safeUrl) return;
+
+
     let inner;
 
     if (type && type.startsWith("video/")) {
 
         inner = `
 
-            <video src="${escapeHTML(url)}"
+            <video src="${escapeHTML(safeUrl)}"
 
-                   controls autoplay></video>
+                   controls></video>
 
         `;
 
@@ -930,7 +1020,7 @@ function openLightbox(url, type) {
 
         inner = `
 
-            <img src="${escapeHTML(url)}" alt="">
+            <img src="${escapeHTML(safeUrl)}" alt="">
 
         `;
 
@@ -1706,6 +1796,13 @@ function openDm(partnerId) {
     }
 
 
+    /* the pane is rebuilt from history below, so forget
+       which letters were already drawn — otherwise letters
+       seen earlier in the session would be skipped and
+       vanish forever */
+
+    dmSeenIds.clear();
+
     $("#dmMessages").innerHTML = "";
 
     loadDmHistory();
@@ -1801,7 +1898,12 @@ function messageAttachmentHtml(row) {
 
     const type = row.attachment_type || "";
 
-    const url = escapeHTML(row.attachment_url);
+    const safeUrl =
+        safeMediaUrl(row.attachment_url);
+
+    if (!safeUrl) return "";
+
+    const url = escapeHTML(safeUrl);
 
 
     if (type.startsWith("image/")) {
@@ -1870,7 +1972,7 @@ function messageAttachmentHtml(row) {
 }
 
 
-function buildMessageElement(row, ownClass) {
+function buildMessageElement(row, ownClass, source) {
 
     const element =
         document.createElement("div");
@@ -1894,7 +1996,11 @@ function buildMessageElement(row, ownClass) {
 
                         data-msg-del="${row.id}"
 
-                        title="Delete message">✕</button>
+                        data-msg-src="${source === "floor" ? "floor" : "dm"}"
+
+                        title="Delete message"
+
+                        aria-label="Delete message">✕</button>
 
               `
 
@@ -1947,7 +2053,8 @@ function appendFloorMessage(row, autoScroll = true) {
 
         buildMessageElement(
             row,
-            row.sender_id === me()
+            row.sender_id === me(),
+            "floor"
         )
 
     );
@@ -1990,11 +2097,30 @@ async function sendFloorMessage() {
     if (!body && !pendingFloorFile) return;
 
 
+    /* snapshot the attachment now: a file picked while
+       this upload is running must not be wiped */
+
+    const fileToSend =
+        pendingFloorFile;
+
+
     if (!allowSend()) {
 
         toast(
             "EASY THERE",
             "The tavern cannot hear you that fast."
+        );
+
+        return;
+
+    }
+
+
+    if (body.length > 300) {
+
+        toast(
+            "TOO LONG",
+            "Tavern messages are capped at 300 characters."
         );
 
         return;
@@ -2008,13 +2134,13 @@ async function sendFloorMessage() {
     let attachment = null;
 
 
-    if (pendingFloorFile) {
+    if (fileToSend) {
 
         try {
 
             attachment =
 
-                await uploadAttachment(pendingFloorFile);
+                await uploadAttachment(fileToSend);
 
         } catch (error) {
 
@@ -2036,7 +2162,16 @@ async function sendFloorMessage() {
 
             );
 
-            setPendingFile("floor", null);
+            /* keep any newer file the user attached
+               while this upload was failing */
+
+            if (pendingFloorFile === fileToSend) {
+                setPendingFile("floor", null);
+            }
+
+            if (!input.value) {
+                input.value = body;
+            }
 
             return;
 
@@ -2076,7 +2211,9 @@ async function sendFloorMessage() {
         }
 
 
-        setPendingFile("floor", null);
+        if (pendingFloorFile === fileToSend) {
+            setPendingFile("floor", null);
+        }
 
         window.sfx?.blip?.();
 
@@ -2165,7 +2302,10 @@ async function loadDmHistory() {
 
     } catch (error) {
 
-        /* silent */
+        console.warn(
+            "Could not load tea letters",
+            error
+        );
 
     }
 
@@ -2189,7 +2329,8 @@ function appendDmLetter(row, autoScroll = true) {
 
         buildMessageElement(
             row,
-            row.sender_id === me()
+            row.sender_id === me(),
+            "dm"
         )
 
     );
@@ -2234,19 +2375,42 @@ async function sendDmLetter() {
     if (!body && !pendingDmFile) return;
 
 
+    const fileToSend =
+        pendingDmFile;
+
+
+    /* rate limit DMs too — the floor already has one */
+
+    const now =
+        performance.now();
+
+    if (now - lastDmSendAt < 600) {
+
+        toast(
+            "EASY THERE",
+            "Your raven needs a moment."
+        );
+
+        return;
+
+    }
+
+    lastDmSendAt = now;
+
+
     input.value = "";
 
 
     let attachment = null;
 
 
-    if (pendingDmFile) {
+    if (fileToSend) {
 
         try {
 
             attachment =
 
-                await uploadAttachment(pendingDmFile);
+                await uploadAttachment(fileToSend);
 
         } catch (error) {
 
@@ -2264,7 +2428,13 @@ async function sendDmLetter() {
 
             );
 
-            setPendingFile("dm", null);
+            if (pendingDmFile === fileToSend) {
+                setPendingFile("dm", null);
+            }
+
+            if (!input.value) {
+                input.value = body;
+            }
 
             return;
 
@@ -2305,7 +2475,9 @@ async function sendDmLetter() {
         }
 
 
-        setPendingFile("dm", null);
+        if (pendingDmFile === fileToSend) {
+            setPendingFile("dm", null);
+        }
 
         window.sfx?.flip?.();
 
@@ -2341,9 +2513,12 @@ document.addEventListener(
             button.dataset.msgDel;
 
 
-        const floorRow =
+        /* the message element knows which table it
+           came from — no guessing via seen-id sets */
 
-            floorSeenIds.has(messageId)
+        const table =
+
+            button.dataset.msgSrc === "floor"
 
                 ? "tavern_messages"
 
@@ -2355,7 +2530,7 @@ document.addEventListener(
 
             const { error } = await db
 
-                .from(floorRow)
+                .from(table)
 
                 .delete()
 
@@ -2615,7 +2790,30 @@ function queueFriendshipSync(payload) {
         performance.now();
 
     if (now - lastFriendshipSyncAt < 700) {
+
+        /* trailing-edge catch-up: events dropped by the
+           throttle still trigger a refresh afterwards */
+
+        if (!friendshipSyncTimer) {
+
+            friendshipSyncTimer =
+                setTimeout(() => {
+
+                    friendshipSyncTimer = null;
+
+                    lastFriendshipSyncAt =
+                        performance.now();
+
+                    refreshFriendState()
+                        .then(renderFriendLists)
+                        .catch(console.warn);
+
+                }, 700 - (now - lastFriendshipSyncAt));
+
+        }
+
         return;
+
     }
 
     lastFriendshipSyncAt = now;

@@ -196,7 +196,8 @@ const QUESTS = [
         progress: user =>
             orders.filter(
                 order =>
-                    order.userId === user.id
+                    order.userId === user.id &&
+                    order.status !== "CANCELLED"
             ).length
     }
 
@@ -553,15 +554,120 @@ async function deleteProductRemote(productId) {
 }
 
 
-async function fetchOrders() {
+async function fetchOrderById(orderId) {
 
-    if (!db) return false;
+    if (!db || !orderId) return null;
 
     const { data, error } =
         await db
             .from("orders")
             .select("*, order_items(*)")
+            .eq("id", orderId)
+            .maybeSingle();
+
+
+    if (error) throw error;
+
+    return data ? mapOrderRow(data) : null;
+
+}
+
+
+async function retryPendingOrders() {
+
+    if (!db || !currentUser) return;
+
+    const pending =
+        orders.filter(order => order.pendingSync);
+
+    for (const order of pending) {
+
+        try {
+
+            const remoteId =
+                await insertOrderRemote(order);
+
+            const index =
+                orders.indexOf(order);
+
+            const syncedOrder = { ...order };
+
+            delete syncedOrder.pendingSync;
+
+            syncedOrder.id = remoteId;
+
+
+            /* adopt server-computed prices/total */
+
+            try {
+
+                const serverOrder =
+                    await fetchOrderById(remoteId);
+
+                if (serverOrder) {
+
+                    delete serverOrder.id;
+
+                    Object.assign(syncedOrder, serverOrder);
+
+                }
+
+            } catch (fetchError) {
+                console.warn(fetchError);
+            }
+
+
+            /* replace in place to keep chronology */
+
+            if (index !== -1) {
+                orders[index] = syncedOrder;
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "Offline order retry failed, will try again",
+                error
+            );
+
+            break;
+
+        }
+
+    }
+
+    saveStorage("teaquest_orders", orders);
+
+}
+
+
+async function fetchOrders() {
+
+    if (!db || !currentUser) return false;
+
+    /* push any locally-queued offline orders first,
+       so the remote refresh below includes them */
+
+    await retryPendingOrders();
+
+    let query =
+        db
+            .from("orders")
+            .select("*, order_items(*)")
             .order("created_at", { ascending: true });
+
+    /* players only ever need their own orders;
+       admins get the full table */
+
+    if (currentUser.role !== "admin") {
+
+        query =
+            query.eq("user_id", currentUser.id);
+
+    }
+
+
+    const { data, error } = await query;
 
 
     if (error) {
@@ -573,7 +679,19 @@ async function fetchOrders() {
     }
 
 
-    orders = (data || []).map(mapOrderRow);
+    /* keep orders that are still queued for upload */
+
+    const stillPending =
+        orders.filter(
+            order =>
+                order.pendingSync &&
+                !(data || []).some(row => row.id === order.id)
+        );
+
+
+    orders = (data || [])
+        .map(mapOrderRow)
+        .concat(stillPending);
 
     saveStorage("teaquest_orders", orders);
 
@@ -582,9 +700,54 @@ async function fetchOrders() {
 }
 
 
+function isMissingRpcError(error) {
+
+    return Boolean(
+        error &&
+        (
+            error.code === "PGRST202" ||
+            /create_order/.test(error.message || "") ||
+            /Could not find the function/.test(error.message || "")
+        )
+    );
+
+}
+
+
 async function insertOrderRemote(order) {
 
     if (!db) throw new Error("Backend offline");
+
+
+    /* Preferred path: the create_order RPC derives every
+       price and the total from the products table itself,
+       so the client can never dictate what an order costs. */
+
+    const { data: rpcOrderId, error: rpcError } =
+        await db.rpc("create_order", {
+            p_customer: order.customer,
+            p_address: order.address,
+            p_phone: order.phone || "",
+            p_payment: order.payment || "card",
+            p_items: (order.items || []).map(item => ({
+                product_id: item.productId,
+                quantity: item.quantity
+            }))
+        });
+
+
+    if (!rpcError && rpcOrderId) {
+        return rpcOrderId;
+    }
+
+
+    if (rpcError && !isMissingRpcError(rpcError)) {
+        throw rpcError;
+    }
+
+
+    /* Fallback: legacy two-step insert (RPC not installed).
+       Prices here come from the local cache only. */
 
     const { data, error } =
         await db
@@ -736,11 +899,42 @@ async function fetchFavorites() {
     }
 
 
-    favorites = (data || []).map(
-        row => row.product_id
-    );
+    const remoteIds =
+        (data || []).map(row => row.product_id);
+
+    const localIds =
+        Array.isArray(favorites) ? favorites : [];
+
+    /* union keeps teas favorited while logged out
+       from being silently discarded on login */
+
+    favorites = [
+        ...new Set([...remoteIds, ...localIds])
+    ];
 
     saveStorage("teaquest_favorites", favorites);
+
+
+    const guestOnly =
+        favorites.filter(
+            id => !remoteIds.includes(id)
+        );
+
+    if (guestOnly.length) {
+
+        const { error: pushError } =
+            await db.from("favorites").upsert(
+                guestOnly.map(productId => ({
+                    user_id: currentUser.id,
+                    product_id: productId
+                }))
+            );
+
+        if (pushError) {
+            console.warn("Favorite sync failed", pushError);
+        }
+
+    }
 
 }
 
@@ -828,13 +1022,21 @@ async function ensureProfile(authUser) {
             .split("@")[0];
 
 
-    await db
-        .from("profiles")
-        .upsert({
-            id: authUser.id,
-            email: authUser.email || "",
-            name: fallbackName
-        });
+    const { error: upsertError } =
+        await db
+            .from("profiles")
+            .upsert({
+                id: authUser.id,
+                email: authUser.email || "",
+                name: fallbackName
+            });
+
+    if (upsertError) {
+        console.warn(
+            "Profile creation failed",
+            upsertError
+        );
+    }
 
 
     return await fetchProfile(authUser.id);
@@ -893,14 +1095,22 @@ function syncProfile() {
         .eq("id", currentUser.id)
         .then(({ error }) => {
 
-            if (error && !profileSyncWarned) {
+            if (error) {
 
-                profileSyncWarned = true;
+                if (!profileSyncWarned) {
 
-                toast(
-                    "SYNC FAILED",
-                    "Progress could not reach the server."
-                );
+                    profileSyncWarned = true;
+
+                    toast(
+                        "SYNC FAILED",
+                        "Progress could not reach the server."
+                    );
+
+                }
+
+            } else {
+
+                profileSyncWarned = false;
 
             }
 
@@ -987,7 +1197,16 @@ async function loadServerData() {
 
     if (!db) return;
 
-    await fetchProducts();
+    const productsLoaded =
+        await fetchProducts();
+
+    if (!productsLoaded) {
+
+        console.warn(
+            "Product fetch failed — running on the local catalog cache."
+        );
+
+    }
 
     if (currentUser) {
 
@@ -1397,6 +1616,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     renderEverything();
 
+    /* route after session restore so deep links like
+       #profile / #admin resolve with the real user */
+
+    showPage(
+        location.hash.replace("#", "") || "home",
+        false
+    );
+
 });
 
 
@@ -1469,11 +1696,6 @@ function initializeNavigation() {
         }
     );
 
-
-    const initialPage =
-        location.hash.replace("#", "") || "home";
-
-    showPage(initialPage, false);
 }
 
 
@@ -1710,19 +1932,25 @@ function renderShopProducts() {
     if (sort === "low") {
 
         result.sort(
-            (a, b) => a.price - b.price
+            (a, b) =>
+                (Number(a.price) || 0) -
+                (Number(b.price) || 0)
         );
 
     } else if (sort === "high") {
 
         result.sort(
-            (a, b) => b.price - a.price
+            (a, b) =>
+                (Number(b.price) || 0) -
+                (Number(a.price) || 0)
         );
 
     } else if (sort === "rating") {
 
         result.sort(
-            (a, b) => b.rating - a.rating
+            (a, b) =>
+                (Number(b.rating) || 0) -
+                (Number(a.rating) || 0)
         );
 
     }
@@ -1822,9 +2050,21 @@ function attachProductEvents(container) {
 
 function initializeShop() {
 
+    let searchTimer = null;
+
     $("#searchInput")?.addEventListener(
         "input",
-        renderShopProducts
+        () => {
+
+            /* debounce so typing does not rebuild
+               the whole grid on every keystroke */
+
+            clearTimeout(searchTimer);
+
+            searchTimer =
+                setTimeout(renderShopProducts, 160);
+
+        }
     );
 
 
@@ -2089,7 +2329,7 @@ function renderCart() {
                             </button>
 
                             <span>
-                                ${item.quantity}
+                                ${escapeHTML(item.quantity)}
                             </span>
 
                             <button
@@ -2511,6 +2751,26 @@ function initializeAuthentication() {
     );
 
 
+    $("#forgotPasswordButton")?.addEventListener(
+        "click",
+        () => {
+
+            setAuthMode("forgot");
+
+        }
+    );
+
+
+    $("#backToLoginButton")?.addEventListener(
+        "click",
+        () => {
+
+            setAuthMode("login");
+
+        }
+    );
+
+
     $("#logoutButton")?.addEventListener(
         "click",
         logout
@@ -2552,9 +2812,9 @@ function openAdminLogin() {
 function toggleAuthMode() {
 
     setAuthMode(
-        authMode === "login"
-            ? "signup"
-            : "login"
+        authMode === "signup"
+            ? "login"
+            : "signup"
     );
 
 }
@@ -2571,6 +2831,12 @@ function setAuthMode(mode) {
     const admin =
         mode === "admin";
 
+    const forgot =
+        mode === "forgot";
+
+    const reset =
+        mode === "reset";
+
 
     $(".auth-modal")?.classList.toggle(
         "admin-mode",
@@ -2581,7 +2847,11 @@ function setAuthMode(mode) {
     $("#authEyebrow").textContent =
         admin
             ? "GUILD MASTER"
-            : "PLAYER ACCESS";
+            : reset
+                ? "PASSWORD RECOVERY"
+                : forgot
+                    ? "PASSWORD RECOVERY"
+                    : "PLAYER ACCESS";
 
 
     $("#authTitle").textContent =
@@ -2589,7 +2859,11 @@ function setAuthMode(mode) {
             ? "GUILD MASTER ACCESS"
             : signup
                 ? "CREATE YOUR CHARACTER"
-                : "WELCOME BACK";
+                : forgot
+                    ? "FORGOT PASSWORD"
+                    : reset
+                        ? "SET A NEW PASSWORD"
+                        : "WELCOME BACK";
 
 
     $("#authSubtitle").textContent =
@@ -2597,7 +2871,11 @@ function setAuthMode(mode) {
             ? "Enter your master credentials to open the command center."
             : signup
                 ? "Create your player account."
-                : "Login to continue your tea quest.";
+                : forgot
+                    ? "Enter your account email and we will send a 6-digit reset code."
+                    : reset
+                        ? `Enter the code sent to ${$("#authEmail")?.value.trim() || "your email"} plus a new password.`
+                        : "Login to continue your tea quest.";
 
 
     $("#authSubmitText").textContent =
@@ -2605,7 +2883,11 @@ function setAuthMode(mode) {
             ? "OPEN COMMAND CENTER"
             : signup
                 ? "CREATE ACCOUNT"
-                : "ENTER WORLD";
+                : forgot
+                    ? "SEND RESET CODE"
+                    : reset
+                        ? "RESET PASSWORD"
+                        : "ENTER WORLD";
 
 
     $("#authSwitchText").textContent =
@@ -2636,7 +2918,7 @@ function setAuthMode(mode) {
     $(".auth-switch")
         ?.classList.toggle(
             "hidden-field",
-            admin
+            admin || forgot || reset
         );
 
 
@@ -2647,8 +2929,158 @@ function setAuthMode(mode) {
         );
 
 
+    $("#authPasswordLabel")
+        ?.classList.toggle(
+            "hidden-field",
+            forgot || reset
+        );
+
+
+    $("#forgotPasswordButton")
+        ?.classList.toggle(
+            "hidden-field",
+            mode !== "login"
+        );
+
+
+    $("#backToLoginButton")
+        ?.classList.toggle(
+            "hidden-field",
+            !(forgot || reset)
+        );
+
+
+    $("#resetCodeGroup")
+        ?.classList.toggle(
+            "hidden-field",
+            !reset
+        );
+
+
+    $("#newPasswordGroup")
+        ?.classList.toggle(
+            "hidden-field",
+            !reset
+        );
+
+
+    $("#adminLoginButton")?.classList.toggle(
+        "hidden-field",
+        forgot || reset
+    );
+
+
+    const emailInput =
+        $("#authEmail");
+
+    if (emailInput) {
+
+        emailInput.required =
+            !reset;
+
+        emailInput.readOnly =
+            reset;
+
+    }
+
+
+    $("#authPassword").required =
+        !signup && !forgot && !reset;
+
     $("#authName").required =
         signup;
+
+
+    if (mode === "login" || mode === "forgot") {
+
+        $("#authPassword").value = "";
+
+    }
+
+    if (!reset) {
+
+        $("#authResetCode").value = "";
+
+        $("#authNewPassword").value = "";
+
+        $("#authNewPasswordConfirm").value = "";
+
+    }
+
+
+    if (mode === "login" || mode === "signup" || mode === "forgot") {
+
+        emailInput?.focus();
+
+    } else if (reset) {
+
+        $("#authResetCode")?.focus();
+
+    }
+
+}
+
+
+async function completeLogin(authUser) {
+
+    let profile = null;
+
+    try {
+
+        profile =
+            await ensureProfile(authUser);
+
+    } catch (profileError) {
+
+        profile = null;
+
+    }
+
+
+    if (!profile) {
+
+        toast(
+            "LOGIN FAILED",
+            "Player profile not found."
+        );
+
+        return false;
+
+    }
+
+
+    currentUser = mapProfile(profile);
+
+
+    saveStorage(
+        "teaquest_currentUser",
+        currentUser
+    );
+
+
+    await fetchFavorites();
+
+    /* also pushes any offline-queued orders */
+
+    await fetchOrders();
+
+
+    if (currentUser.role === "admin") {
+        await fetchCustomers();
+    }
+
+
+    closeModal(
+        $("#authModal")
+    );
+
+
+    renderEverything();
+
+    updateNavigation();
+
+
+    return true;
 
 }
 
@@ -2668,6 +3100,192 @@ async function handleAuthentication(event) {
     const password =
         $("#authPassword")
             .value;
+
+
+    if (authMode === "forgot") {
+
+        if (!db) {
+
+            toast(
+                "BACKEND OFFLINE",
+                "Cannot reach the server. Try again later."
+            );
+
+            return;
+
+        }
+
+
+        const submitButton =
+            $("#authForm")?.querySelector(
+                'button[type="submit"]'
+            );
+
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+
+
+        const { error } =
+            await db.auth.resetPasswordForEmail(email);
+
+
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+
+
+        if (error) {
+
+            toast(
+                "RESET FAILED",
+                (error.message ||
+                    "Could not send the reset code.")
+                    .slice(0, 90)
+            );
+
+            return;
+
+        }
+
+
+        setAuthMode("reset");
+
+
+        toast(
+            "CODE SENT ✉",
+            "Check your inbox for the 6-digit reset code."
+        );
+
+        return;
+
+    }
+
+
+    if (authMode === "reset") {
+
+        if (!db) {
+
+            toast(
+                "BACKEND OFFLINE",
+                "Cannot reach the server. Try again later."
+            );
+
+            return;
+
+        }
+
+
+        const code =
+            $("#authResetCode")
+                .value
+                .trim()
+                .replace(/\s+/g, "");
+
+        const newPassword =
+            $("#authNewPassword")
+                .value;
+
+        const confirmPassword =
+            $("#authNewPasswordConfirm")
+                .value;
+
+
+        if (!code) {
+
+            toast(
+                "CODE REQUIRED",
+                "Enter the 6-digit code from your email."
+            );
+
+            return;
+
+        }
+
+
+        if (newPassword.length < 6) {
+
+            toast(
+                "PASSWORD TOO SHORT",
+                "Use at least 6 characters."
+            );
+
+            return;
+
+        }
+
+
+        if (newPassword !== confirmPassword) {
+
+            toast(
+                "PASSWORDS DIFFER",
+                "The two passwords do not match."
+            );
+
+            return;
+
+        }
+
+
+        const { data, error } =
+            await db.auth.verifyOtp({
+                email,
+                token: code,
+                type: "recovery"
+            });
+
+
+        if (error || !data.user) {
+
+            toast(
+                "INVALID CODE",
+                "Wrong or expired code. Request a new one."
+            );
+
+            setAuthMode("forgot");
+
+            return;
+
+        }
+
+
+        const { error: updateError } =
+            await db.auth.updateUser({
+                password: newPassword
+            });
+
+
+        if (updateError) {
+
+            toast(
+                "RESET FAILED",
+                (updateError.message ||
+                    "Could not update the password.")
+                    .slice(0, 90)
+            );
+
+            return;
+
+        }
+
+
+        currentUser = null;
+
+
+        await db.auth.signOut();
+
+
+        setAuthMode("login");
+
+
+        toast(
+            "PASSWORD UPDATED ✦",
+            "Log in with your new password."
+        );
+
+        return;
+
+    }
 
 
     if (authMode === "admin") {
@@ -2803,56 +3421,13 @@ async function handleAuthentication(event) {
         }
 
 
-        let profile = null;
-
-        try {
-
-            profile =
-                await ensureProfile(data.user);
-
-        } catch (profileError) {
-
-            profile = null;
-
-        }
+        const loggedIn =
+            await completeLogin(data.user);
 
 
-        if (!profile) {
-
-            toast(
-                "LOGIN FAILED",
-                "Player profile not found."
-            );
-
+        if (!loggedIn) {
             return;
         }
-
-
-        currentUser = mapProfile(profile);
-
-
-        saveStorage(
-            "teaquest_currentUser",
-            currentUser
-        );
-
-
-        await fetchFavorites();
-
-        await fetchOrders();
-
-
-        if (currentUser.role === "admin") {
-            await fetchCustomers();
-        }
-
-
-        closeModal(
-            $("#authModal")
-        );
-
-
-        renderEverything();
 
 
         toast(
@@ -3004,24 +3579,48 @@ async function handleAuthentication(event) {
 async function logout() {
 
     if (db) {
-        await db.auth.signOut();
+
+        const { error } =
+            await db.auth.signOut();
+
+        if (error) {
+            console.warn("Sign out failed", error);
+        }
+
     }
 
     window.shutdownTavern?.();
+
 
     currentUser = null;
 
     customers = [];
 
-    favorites =
-        getStorage("teaquest_favorites", []);
+    /* never leak the previous player's data into the
+       next session on a shared device */
+
+    cart = [];
+
+    favorites = [];
+
+    orders = [];
+
 
     localStorage.removeItem(
         "teaquest_currentUser"
     );
 
+    localStorage.removeItem(
+        "teaquest_cart"
+    );
 
-    await fetchOrders().catch(() => {});
+    localStorage.removeItem(
+        "teaquest_favorites"
+    );
+
+    localStorage.removeItem(
+        "teaquest_orders"
+    );
 
 
     updateNavigation();
@@ -3375,13 +3974,13 @@ function openCheckout() {
                     <div class="checkout-summary-row">
                         <span>
                             ${escapeHTML(product.name)}
-                            × ${item.quantity}
+                            × ${escapeHTML(item.quantity)}
                         </span>
 
                         <span>
                             $${(
-                                product.price *
-                                item.quantity
+                                Number(product.price) *
+                                (Number(item.quantity) || 0)
                             ).toFixed(2)}
                         </span>
                     </div>
@@ -3450,6 +4049,23 @@ async function submitOrder(event) {
     event.preventDefault();
 
 
+    if (!currentUser) {
+
+        toast(
+            "LOGIN REQUIRED",
+            "Log in to place an order."
+        );
+
+        openAuth();
+
+        return;
+
+    }
+
+
+    if (!cart.length) return;
+
+
     const total =
         getCartTotal();
 
@@ -3510,6 +4126,9 @@ async function submitOrder(event) {
     let serverError = false;
 
 
+    order.pendingSync = true;
+
+
     try {
 
         remoteId =
@@ -3528,7 +4147,32 @@ async function submitOrder(event) {
 
 
     if (remoteId) {
+
         order.id = remoteId;
+
+
+        /* adopt the server-computed prices/total so the
+           local history matches the database exactly */
+
+        try {
+
+            const serverOrder =
+                await fetchOrderById(remoteId);
+
+            if (serverOrder) {
+
+                delete serverOrder.id;
+
+                Object.assign(order, serverOrder);
+
+            }
+
+        } catch (fetchError) {
+            console.warn(fetchError);
+        }
+
+        delete order.pendingSync;
+
     }
 
 
@@ -3810,6 +4454,21 @@ function renderAdminStats() {
 }
 
 
+function localDateKey(value) {
+
+    const date =
+        value instanceof Date ? value : new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    const pad =
+        part => String(part).padStart(2, "0");
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+}
+
+
 function renderRevenueChart() {
 
     const container =
@@ -3830,8 +4489,7 @@ function renderRevenueChart() {
 
 
         days.push({
-            key:
-                date.toISOString().slice(0, 10),
+            key: localDateKey(date),
 
             label:
                 date.toLocaleDateString("en-US", { weekday: "short" }),
@@ -3844,8 +4502,11 @@ function renderRevenueChart() {
 
     orders.forEach(order => {
 
+        /* bucket in local time so "today" matches
+           what the merchant actually sees */
+
         const key =
-            (order.createdAt || "").slice(0, 10);
+            localDateKey(order.createdAt);
 
         const day =
             days.find(item => item.key === key);
@@ -4269,6 +4930,61 @@ function renderAdminOrdersTable() {
 }
 
 
+async function revokeOrderXp(userId) {
+
+    if (!userId) return;
+
+    const amount = ORDER_XP_REWARD;
+
+    if (currentUser && currentUser.id === userId) {
+
+        currentUser.xp =
+            Math.max(0, Number(currentUser.xp || 0) - amount);
+
+        saveCurrentUser();
+
+    }
+
+
+    if (!db) return;
+
+
+    try {
+
+        const { data, error } =
+            await db
+                .from("profiles")
+                .select("id, xp")
+                .eq("id", userId)
+                .maybeSingle();
+
+        if (error || !data) return;
+
+        const nextXp =
+            Math.max(0, Number(data.xp || 0) - amount);
+
+        const { error: updateError } =
+            await db
+                .from("profiles")
+                .update({ xp: nextXp })
+                .eq("id", userId);
+
+        if (updateError) throw updateError;
+
+        const customerEntry =
+            customers.find(item => item.id === userId);
+
+        if (customerEntry) {
+            customerEntry.xp = nextXp;
+        }
+
+    } catch (error) {
+        console.warn("XP clawback failed", error);
+    }
+
+}
+
+
 async function updateOrderStatus(orderId, status) {
 
     const order =
@@ -4277,6 +4993,10 @@ async function updateOrderStatus(orderId, status) {
         );
 
     if (!order) return;
+
+
+    const wasCancelled =
+        order.status === "CANCELLED";
 
 
     try {
@@ -4305,6 +5025,18 @@ async function updateOrderStatus(orderId, status) {
         "teaquest_orders",
         orders
     );
+
+
+    /* cancelled orders should never keep their reward */
+
+    if (
+        status === "CANCELLED" &&
+        !wasCancelled
+    ) {
+
+        await revokeOrderXp(order.userId);
+
+    }
 
 
     renderProfile();
@@ -4376,10 +5108,10 @@ function viewOrderDetails(orderId) {
 
                 <div class="order-detail-row">
                     <span>
-                        ${escapeHTML(item.name)} × ${item.quantity}
+                        ${escapeHTML(item.name)} × ${escapeHTML(item.quantity)}
                     </span>
                     <span>
-                        $${(Number(item.price) * item.quantity).toFixed(2)}
+                        $${(Number(item.price) * (Number(item.quantity) || 0)).toFixed(2)}
                     </span>
                 </div>
 
@@ -4859,6 +5591,14 @@ async function changeAdminPassword(event) {
 
 function exportBackup() {
 
+    if (
+        !confirm(
+            "Export a JSON backup of the data currently loaded in this browser?"
+        )
+    ) {
+        return;
+    }
+
     const backup = {
         exportedAt:
             new Date().toISOString(),
@@ -5018,9 +5758,7 @@ async function saveAdminProduct(event) {
         description:
             $("#adminProductDescription")
                 .value
-                .trim(),
-
-        rating: 4.8
+                .trim()
 
     };
 
@@ -5042,6 +5780,9 @@ async function saveAdminProduct(event) {
         if (index === -1) return;
 
 
+        /* spread keeps every field not edited here,
+           including the existing rating */
+
         savedProduct = {
             ...products[index],
             ...productData
@@ -5056,10 +5797,8 @@ async function saveAdminProduct(event) {
                 (window.crypto && crypto.randomUUID)
                     ? crypto.randomUUID()
                     : `tea-${Date.now()}`,
-            rarity: getProductRarity({
-                ...productData,
-                price: productData.price
-            }),
+            rating: 4.8,
+            rarity: getProductRarity(productData),
             origin: "",
             flavorNotes: "",
             moods: [],
@@ -5856,13 +6595,44 @@ function revealRouletteResult(product) {
    MODALS
 ========================================================= */
 
+let lastFocusedElement = null;
+
+
+function getModalFocusables(modal) {
+
+    return modal.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+
+}
+
+
 function openModal(modal) {
 
     if (!modal) return;
 
+    if (!modal.classList.contains("open")) {
+        lastFocusedElement = document.activeElement;
+    }
+
     modal.classList.add("open");
 
     document.body.style.overflow = "hidden";
+
+
+    const focusables =
+        getModalFocusables(modal);
+
+    const firstInput =
+        modal.querySelector("input, select, textarea");
+
+    const focusTarget =
+        (firstInput && !firstInput.disabled)
+            ? firstInput
+            : (focusables[0] ||
+               modal.querySelector(".modal-close"));
+
+    focusTarget?.focus?.();
 
 }
 
@@ -5871,9 +6641,33 @@ function closeModal(modal) {
 
     if (!modal) return;
 
+    const wasOpen =
+        modal.classList.contains("open");
+
     modal.classList.remove("open");
 
-    document.body.style.overflow = "";
+
+    const stillOpen =
+        document.querySelector(".modal-overlay.open");
+
+    if (!stillOpen) {
+        document.body.style.overflow = "";
+    }
+
+
+    if (
+        wasOpen &&
+        !stillOpen &&
+        lastFocusedElement &&
+        typeof lastFocusedElement.focus === "function" &&
+        document.contains(lastFocusedElement)
+    ) {
+
+        lastFocusedElement.focus();
+
+        lastFocusedElement = null;
+
+    }
 
 }
 
@@ -5913,6 +6707,49 @@ document.addEventListener(
 
         }
 
+
+        /* keep Tab inside whichever modal is open */
+
+        if (event.key === "Tab") {
+
+            const overlay =
+                $$(".modal-overlay.open")
+                    .pop();
+
+            if (!overlay) return;
+
+            const nodes =
+                getModalFocusables(overlay);
+
+            if (!nodes.length) return;
+
+            const first = nodes[0];
+
+            const last = nodes[nodes.length - 1];
+
+
+            if (
+                event.shiftKey &&
+                document.activeElement === first
+            ) {
+
+                last.focus();
+
+                event.preventDefault();
+
+            } else if (
+                !event.shiftKey &&
+                document.activeElement === last
+            ) {
+
+                first.focus();
+
+                event.preventDefault();
+
+            }
+
+        }
+
     }
 );
 
@@ -5923,10 +6760,20 @@ document.addEventListener(
 
 function initializeTheme() {
 
-    const savedTheme =
+    const storedTheme =
         localStorage.getItem(
             "teaquest_theme"
-        ) || "day";
+        );
+
+    /* first visit follows the system preference */
+
+    const savedTheme =
+        storedTheme ||
+        (window.matchMedia &&
+         window.matchMedia("(prefers-color-scheme: light)")
+             .matches
+            ? "day"
+            : "night");
 
 
     applyTheme(savedTheme);
@@ -6083,6 +6930,16 @@ function toast(title, message) {
 ========================================================= */
 
 function pulseScreen() {
+
+    if (
+        window.matchMedia &&
+        window.matchMedia(
+            "(prefers-reduced-motion: reduce)"
+        ).matches
+    ) {
+        return;
+    }
+
 
     const flash =
         $("#screenFlash");

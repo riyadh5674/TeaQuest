@@ -14,7 +14,8 @@
 const ARCADE_GAMES = {
     "perfect-brew": { label: "PERFECT BREW", mode: "max" },
     "leaf-catch": { label: "LEAF CATCH", mode: "max" },
-    "tea-memory": { label: "TEA MEMORY", mode: "min" }
+    "tea-memory": { label: "TEA MEMORY", mode: "min" },
+    "minecraft-quest": { label: "MINECRAFT QUEST", mode: "max" }
 };
 
 
@@ -137,6 +138,9 @@ function renderArcadeBests() {
     const memoryBest =
         $("#bestTeaMemory");
 
+    const mcBest =
+        $("#bestMinecraftQuest");
+
 
     const brew =
         getHighScore("perfect-brew");
@@ -146,6 +150,9 @@ function renderArcadeBests() {
 
     const memory =
         getHighScore("tea-memory");
+
+    const mc =
+        getHighScore("minecraft-quest");
 
 
     if (brewBest) {
@@ -161,6 +168,11 @@ function renderArcadeBests() {
     if (memoryBest) {
         memoryBest.textContent =
             memory === null ? "—" : `${memory} moves`;
+    }
+
+    if (mcBest) {
+        mcBest.textContent =
+            mc === null ? "—" : `${mc}`;
     }
 
 }
@@ -218,7 +230,7 @@ window.renderArcadeRecords = function () {
                 <div class="arcade-record">
 
                     <span class="arcade-record-icon">
-                        ${gameId === "perfect-brew" ? "☕" : gameId === "leaf-catch" ? "🍃" : "🃏"}
+                        ${gameId === "perfect-brew" ? "☕" : gameId === "leaf-catch" ? "🍃" : gameId === "tea-memory" ? "🃏" : "⛏️"}
                     </span>
 
                     <strong>${config.label}</strong>
@@ -376,6 +388,10 @@ function openPerfectBrew() {
 
     openModal(modal);
 
+    /* one play per session — restarts don't farm it */
+
+    recordArcadePlay();
+
     startBrewLoop();
 
 }
@@ -463,8 +479,6 @@ function startBrewLoop() {
 
     stopBrewLoop();
 
-    recordArcadePlay();
-
     brewRunning = true;
 
     brewLastFrame = performance.now();
@@ -475,8 +489,14 @@ function startBrewLoop() {
         if (!brewRunning) return;
 
 
+        /* clamp so a background-tab stall doesn't
+           teleport the needle */
+
         const delta =
-            (now - brewLastFrame) / 1000;
+            Math.min(
+                0.05,
+                Math.max(0, (now - brewLastFrame) / 1000)
+            );
 
         brewLastFrame = now;
 
@@ -783,7 +803,7 @@ function endBrewRun() {
 
     let message =
         `You brewed ${brewStreakValue} perfect cups.` +
-        (brewRunXp > 0 ? ` +${brewRunXp} XP` : "");
+        (currentUser && brewRunXp > 0 ? ` +${brewRunXp} XP` : "");
 
 
     if (result.isNewRecord && brewStreakValue > 0) {
@@ -919,6 +939,10 @@ function openLeafCatch() {
 
     openModal(modal);
 
+    /* one play per session — restarts don't farm it */
+
+    recordArcadePlay();
+
 }
 
 
@@ -956,8 +980,6 @@ function startLeafGame() {
     resetLeafGame();
 
     $("#leafStart")?.classList.add("hidden-field");
-
-    recordArcadePlay();
 
     leafRunning = true;
 
@@ -1299,7 +1321,7 @@ function endLeafGame() {
 
     let message =
         `Final score ${leafScoreValue}.` +
-        (xpEarned > 0 ? ` +${xpEarned} XP` : "");
+        (currentUser && xpEarned > 0 ? ` +${xpEarned} XP` : "");
 
 
     if (result.isNewRecord && leafScoreValue > 0) {
@@ -1385,10 +1407,12 @@ function initializeLeafCatch() {
 
             if (event.key === "ArrowLeft") {
                 leafKeys.left = true;
+                event.preventDefault();
             }
 
             if (event.key === "ArrowRight") {
                 leafKeys.right = true;
+                event.preventDefault();
             }
 
         }
@@ -1419,6 +1443,8 @@ function initializeLeafCatch() {
 
 let memoryDeck = [];
 
+let memoryTotalPairs = 0;
+
 let memoryFirstCard = null;
 
 let memorySecondCard = null;
@@ -1429,11 +1455,14 @@ let memoryPairsFound = 0;
 
 let memoryLockInput = false;
 
+let memoryFlipTimer = null;
+
 
 function buildMemoryDeck() {
 
     const pool =
-        products.slice(0, 8);
+        (Array.isArray(products) ? products : [])
+            .slice(0, 8);
 
 
     const deck = [];
@@ -1487,6 +1516,8 @@ function openTeaMemory() {
 
     openModal(modal);
 
+    recordArcadePlay();
+
     startMemoryGame();
 
 }
@@ -1496,6 +1527,9 @@ function startMemoryGame() {
 
     memoryDeck =
         buildMemoryDeck();
+
+    memoryTotalPairs =
+        memoryDeck.length / 2;
 
     memoryFirstCard = null;
 
@@ -1508,7 +1542,14 @@ function startMemoryGame() {
     memoryLockInput = false;
 
 
-    recordArcadePlay();
+    if (memoryFlipTimer) {
+
+        clearTimeout(memoryFlipTimer);
+
+        memoryFlipTimer = null;
+
+    }
+
 
     renderMemoryGrid();
 
@@ -1516,7 +1557,9 @@ function startMemoryGame() {
 
 
     $("#memoryHint").textContent =
-        "Matched pairs discover their tea in your Codex.";
+        memoryTotalPairs
+            ? "Matched pairs discover their tea in your Codex."
+            : "No teas available to memorize yet.";
 
 }
 
@@ -1667,7 +1710,13 @@ function handleMemoryMatch() {
     memorySecondCard = null;
 
 
-    if (memoryPairsFound >= 8) {
+    /* win threshold derives from the actual deck —
+       never assume exactly 8 pairs */
+
+    if (
+        memoryTotalPairs > 0 &&
+        memoryPairsFound >= memoryTotalPairs
+    ) {
 
         finishMemoryGame();
 
@@ -1690,7 +1739,7 @@ function handleMemoryMismatch() {
         memorySecondCard;
 
 
-    setTimeout(() => {
+    memoryFlipTimer = setTimeout(() => {
 
         first.element.classList.remove("flipped");
 
@@ -1703,6 +1752,8 @@ function handleMemoryMismatch() {
 
         memoryLockInput = false;
 
+        memoryFlipTimer = null;
+
     }, 750);
 
 }
@@ -1714,7 +1765,7 @@ function updateMemoryHud() {
         memoryMovesCount;
 
     $("#memoryPairs").textContent =
-        `${memoryPairsFound} / 8`;
+        `${memoryPairsFound} / ${memoryTotalPairs}`;
 
     const best =
         getHighScore("tea-memory");
@@ -1755,7 +1806,7 @@ function finishMemoryGame() {
 
     let message =
         `All teas matched in ${memoryMovesCount} moves! ` +
-        `+${xpEarned} XP`;
+        (currentUser ? `+${xpEarned} XP` : "Log in to earn XP.");
 
 
     if (result.isNewRecord) {
