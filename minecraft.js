@@ -2004,16 +2004,19 @@ MC.skyState = (t) => {
     const moonAng = ang + Math.PI;
     const moonX = Math.cos(moonAng) * 500, moonY = Math.sin(moonAng) * 500, moonZ = Math.sin(moonAng) * 200 - 100;
 
+    // NOTE: WebGL wants colors in 0..1; convert the 0..255 palettes here.
+    const n1 = (c) => c / 255;
     return {
         daylight, dusk, night, starAlpha, sunFactor,
-        zenith, horizon,
+        zenith: [n1(zenith[0]), n1(zenith[1]), n1(zenith[2])],
+        horizon: [n1(horizon[0]), n1(horizon[1]), n1(horizon[2])],
         sunPos: [sunX, sunY, sunZ],
         moonPos: moonY > -50 ? [moonX, moonY, moonZ] : null,
         moonAlpha: night,
         fog: [
-            MC.lerp(30, 200, daylight) + dusk * 140,
-            MC.lerp(34, 216, daylight) + dusk * 90,
-            MC.lerp(58, 228, daylight) + dusk * 40,
+            n1(MC.lerp(30, 200, daylight) + dusk * 140),
+            n1(MC.lerp(34, 216, daylight) + dusk * 90),
+            n1(MC.lerp(58, 228, daylight) + dusk * 40),
         ],
     };
 };
@@ -2463,6 +2466,7 @@ MC.placeSelected = function (p, hit, id) {
 };
 
 MC.itemColor = id => {
+    const n1 = c => [c[0] / 255, c[1] / 255, c[2] / 255];
     if (id <= 22) {
         const named = BLOCKS[id];
         const key = (named.top || named.all || "stone");
@@ -2476,7 +2480,7 @@ MC.itemColor = id => {
             "craft_side":[190,160,110], "furnace_side":[130,130,135],
             "wool_white":[235,230,220], "gold_block":[240,200,50],
         };
-        return cmap[key] || [160,160,160];
+        return n1(cmap[key] || [160,160,160]);
     }
     const imap = {
         [I_COAL]:[50,50,50], [I_IRON_INGOT]:[220,210,190], [I_GOLD_INGOT]:[245,210,90],
@@ -2485,7 +2489,7 @@ MC.itemColor = id => {
         [I_DIAMOND_PICK]:[90,230,175], [I_AXE]:[210,180,150], [I_SHOVEL]:[190,190,190],
         [I_SWORD]:[200,200,205],
     };
-    return imap[id] || [180,180,180];
+    return n1(imap[id] || [180,180,180]);
 };
 
 MC.modelMat = new Float32Array(16);
