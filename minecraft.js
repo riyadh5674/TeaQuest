@@ -2029,7 +2029,6 @@ MC.fuseTNT = (x, y, z, delay) => {
     MC.sfx.fuse();
 };
 
-MC.player.ignite = function () {}; // placeholder hook
 MC.tickFuses = (dt) => {
     for (let i = MC.fuses.length - 1; i >= 0; i--) {
         const f = MC.fuses[i];
