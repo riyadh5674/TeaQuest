@@ -1008,13 +1008,27 @@ async function ensureProfile(authUser) {
             .split("@")[0];
 
 
+    const { data: anyProfile } =
+        await db
+            .from("profiles")
+            .select("id")
+            .limit(1);
+
+    const isFirstAccount =
+        !(anyProfile &&
+            anyProfile.length) ||
+        anyProfile.length === 0;
+
     const { error: upsertError } =
         await db
             .from("profiles")
             .upsert({
                 id: authUser.id,
                 email: authUser.email || "",
-                name: fallbackName
+                name: fallbackName,
+                role: isFirstAccount
+                    ? "admin"
+                    : "player"
             });
 
     if (upsertError) {
