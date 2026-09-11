@@ -2680,11 +2680,13 @@ MC.injectCSS = function () {
 .mc-help { color: #7d91ab; font-size: 12px; line-height: 1.8; min-width: 420px; max-width: 92vw; }
 .mc-help b { color: #b7c9e0; }
 .mc-err {
-  display: none; background: rgba(180,40,40,0.92); color: #fff; border: 2px solid #ff5555;
-  border-radius: 10px; padding: 18px 22px; margin: 6px 0 12px; white-space: pre-wrap; font-size: 14px;
-  line-height: 1.55; font-family: Consolas, monospace; min-width: 340px; max-width: 92vw; z-index: 9;
+  display: none; background: rgba(200,30,30,0.96); color: #fff; border: 3px solid #ff4444;
+  border-radius: 12px; padding: 24px 28px; margin: 10px 0 16px; white-space: pre-wrap;
+  font-size: 16px; line-height: 1.6; font-family: Consolas, monospace;
+  min-width: 340px; max-width: 92vw; z-index: 10; max-height: 300px; overflow: auto;
+  box-shadow: 0 0 30px rgba(255,0,0,0.3);
 }
-.mc-err .mc-eh { font-weight: 800; font-size: 16px; letter-spacing: 1px; margin-bottom: 8px; }
+.mc-err .mc-eh { font-weight: 800; font-size: 20px; letter-spacing: 1px; margin-bottom: 10px; }
 .mc-paused { position: absolute; inset: 0; background: rgba(5,6,9,0.72); backdrop-filter: blur(3px); z-index: 6; display: flex; align-items: center; justify-content: center; }
 .mc-paused.hidden, .mc-menu.hidden, .mc-death.hidden { display: none; }
 .mc-menu-card { background: #151a22; border: 1px solid #2b3646; border-radius: 14px; padding: 28px 34px; display: grid; gap: 12px; min-width: 340px; text-align: center; }
@@ -2880,7 +2882,7 @@ MC.startNew = function () {
         MC.buildWorld(seed, mode, false);
     } catch (e) {
         console.error(e);
-        MC.showErr("Click Create World failed: " + (e && e.stack || e && e.message || e));
+        MC.showErr(String(e && (e.stack || e.message || e)));
     }
 };
 MC.continueWorld = function () {
@@ -3057,11 +3059,16 @@ MC.setPanel = function (which) {
    05 · TOAST + HUD
    ======================================================== */
 MC.showErr = function (msg) {
+    MC.state.running = false;
+    if (MC.overlay) MC.overlay.classList.remove("hidden");
+    if (MC.ui['menu']) MC.ui['menu'].classList.remove("hidden");
     const el = MC.ui && MC.ui['menu'] && MC.ui['menu'].querySelector('#mcErr');
     if (!el) return;
-    el.innerHTML = '<div class="mc-eh">MINECRAFT QUEST error</div>' + msg;
+    const info = "\n\n[Minecraft Quest v" + MC.VERSION + " | " + navigator.userAgent.slice(0,80) + "]";
+    el.innerHTML = '<div class="mc-eh">MINECRAFT QUEST ERROR</div><pre style="white-space:pre-wrap;margin:0">' + String(msg).replace(/</g,'&lt;') + info.replace(/</g,'&lt;') + '</pre>';
     el.style.display = 'block';
-    console.error('[Minecraft Quest]', msg);
+    try { el.scrollIntoView(); } catch(e) {}
+    console.error('[Minecraft Quest]', msg + info);
 };
 MC.hideErr = function () {
     const el = MC.ui && MC.ui['menu'] && MC.ui['menu'].querySelector('#mcErr');
