@@ -1328,7 +1328,7 @@ MC.gfx = (() => {
     let gl = null, canvas = null, world = null;
     let proj, view, model, mlook;
     let progBlock, progSky, progCloud, progBill, progStar, progUni;
-    let dome, starBuf, quadUv;
+    let dome, starBuf, quadUv, quadIdxBuf;
     let cloudTex, billTexs = {};
     let shadeAttribs;
 
@@ -1466,6 +1466,9 @@ MC.gfx = (() => {
         quadUv = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, quadUv);
         gl.bufferData(gl.ARRAY_BUFFER, makeQuad(), gl.STATIC_DRAW);
+        quadIdxBuf = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, quadIndices, gl.STATIC_DRAW);
 
         // hemisphere dome
         const d = mkDome();
@@ -1657,7 +1660,7 @@ MC.gfx = (() => {
         gl0.bindBuffer(gl0.ARRAY_BUFFER, quadUv);
         gl0.enableVertexAttribArray(gl0.getAttribLocation(prog, "aCorner"));
         gl0.vertexAttribPointer(gl0.getAttribLocation(prog, "aCorner"), 2, gl0.FLOAT, false, 0, 0);
-        gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, quadIndices);
+        gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
         gl0.drawElements(gl0.TRIANGLES, 6, gl0.UNSIGNED_SHORT, 0);
     };
 
@@ -1679,7 +1682,7 @@ MC.gfx = (() => {
         gl0.bindBuffer(gl0.ARRAY_BUFFER, quadUv);
         gl0.enableVertexAttribArray(gl0.getAttribLocation(progCloud, "aCorner"));
         gl0.vertexAttribPointer(gl0.getAttribLocation(progCloud, "aCorner"), 2, gl0.FLOAT, false, 0, 0);
-        gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, quadIndices);
+        gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
         gl0.drawElements(gl0.TRIANGLES, 6, gl0.UNSIGNED_SHORT, 0);
         // second layer
         gl0.uniform1f(gl0.getUniformLocation(progCloud, "uScroll"), -t * 0.5 + 17);
@@ -1734,7 +1737,7 @@ MC.gfx = (() => {
         const ib = gl0.createBuffer();
         gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, ib);
         gl0.bufferData(gl0.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl0.STATIC_DRAW);
-        const cubeData = { vb, ib, count: v.length / 5 };
+        const cubeData = { vb, ib, idx: idx.length, count: v.length / 5 };
         MC.unitCubeData = cubeData;
         return cubeData;
     };
@@ -1758,7 +1761,7 @@ MC.gfx = (() => {
         gl0.enableVertexAttribArray(gl0.getAttribLocation(progUni, "aUV"));
         gl0.vertexAttribPointer(gl0.getAttribLocation(progUni, "aUV"), 2, gl0.FLOAT, false, 20, 12);
         gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, cube.ib);
-        gl0.drawElements(gl0.TRIANGLES, cube.count * 3, gl0.UNSIGNED_SHORT, 0);
+        gl0.drawElements(gl0.TRIANGLES, cube.idx, gl0.UNSIGNED_SHORT, 0);
     };
 
     MC.renderMob = (mob, world) => {
