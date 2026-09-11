@@ -1267,18 +1267,49 @@ void main(){
 MC.ChunkRender = class {
     constructor(gl, mesh) {
         this.gl = gl;
-        this.list = [];   // {fmt, vbo, ibo, count, water}
+        this.list = [];   // {vbo, ibo, idx, water}
         this.deleted = false;
-        const buckets = Object.values(mesh.buckets);
+        const buckets = mesh.buckets instanceof Map ? mesh.buckets.values() : Object.values(mesh.buckets);
         for (const b of buckets) {
-            if (b.n === 0) continue;
+            if (!b.n) continue;
+            this.push(gl, b.v, b.i, b.water);
+        }
+    }
+    // b.n is a running VERTEX count (4/quad); split into parts so indices never exceed
+    // Uint16 range (65535) even for giant carved-out chunks.
+    push(gl, v, i, water) {
+        const MAXV = 65000;
+        const faces = i.length / 6;
+        let face = 0;
+        while (face < faces) {
+            let lo = Infinity, hi = -1, end = faces;
+            for (let f = face; f < faces; f++) {
+                const a = f * 6;
+                let nlo = lo, nhi = hi;
+                for (let j = 0; j < 6; j++) {
+                    const vi = i[a + j];
+                    if (vi < nlo) nlo = vi;
+                    if (vi > nhi) nhi = vi;
+                }
+                if (nhi - nlo >= MAXV) { end = f; break; }
+                lo = nlo; hi = nhi;
+                end = f + 1;
+            }
+            if (end === face) end = face + 1; // single oversized face: force progress
+            const count = end - face;
+            const vCount = hi - lo + 1;
+            const pv = new Float32Array(vCount * 6);
+            for (let r = 0; r < vCount * 6; r++) pv[r] = v[lo * 6 + r];
+            const pi = new Uint16Array(count * 6);
+            for (let r = 0; r < count * 6; r++) pi[r] = i[face * 6 + r] - lo;
             const vbo = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(b.v), gl.STATIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, pv, gl.STATIC_DRAW);
             const ibo = gl.createBuffer();
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(b.i), gl.STATIC_DRAW);
-            this.list.push({ vbo, ibo, count: b.n, water: b.water });
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, pi, gl.STATIC_DRAW);
+            this.list.push({ vbo, ibo, idx: count * 6, water });
+            face = end;
         }
     }
     dispose(gl) {
@@ -1552,7 +1583,7 @@ MC.gfx = (() => {
                 gl0.enableVertexAttribArray(shadeAttribs.aShade);
                 gl0.vertexAttribPointer(shadeAttribs.aShade, 1, gl0.FLOAT, false, stride, 20);
                 gl0.bindBuffer(gl0.ELEMENT_ARRAY_BUFFER, part.ibo);
-                gl0.drawElements(gl0.TRIANGLES, part.count * 3, gl0.UNSIGNED_SHORT, 0);
+                gl0.drawElements(gl0.TRIANGLES, part.idx, gl0.UNSIGNED_SHORT, 0);
             }
         }
 
