@@ -2289,7 +2289,7 @@ function renderCart() {
             </div>
         `;
 
-        $("#cartTotal").textContent = "$0.00";
+        if ($("#cartTotal")) $("#cartTotal").textContent = "$0.00";
 
         return;
     }
@@ -2364,7 +2364,7 @@ function renderCart() {
         }).join("");
 
 
-    $("#cartTotal").textContent =
+    if ($("#cartTotal")) $("#cartTotal").textContent =
         `$${total.toFixed(2)}`;
 
 
@@ -2859,7 +2859,7 @@ function setAuthMode(mode) {
     );
 
 
-    $("#authEyebrow").textContent =
+    if ($("#authEyebrow")) $("#authEyebrow").textContent =
         admin
             ? "GUILD MASTER"
             : reset
@@ -2869,7 +2869,7 @@ function setAuthMode(mode) {
                     : "PLAYER ACCESS";
 
 
-    $("#authTitle").textContent =
+    if ($("#authTitle")) $("#authTitle").textContent =
         admin
             ? "GUILD MASTER ACCESS"
             : signup
@@ -2881,7 +2881,7 @@ function setAuthMode(mode) {
                         : "WELCOME BACK";
 
 
-    $("#authSubtitle").textContent =
+    if ($("#authSubtitle")) $("#authSubtitle").textContent =
         admin
             ? "Enter your master credentials to open the command center."
             : signup
@@ -2893,7 +2893,7 @@ function setAuthMode(mode) {
                         : "Login to continue your tea quest.";
 
 
-    $("#authSubmitText").textContent =
+    if ($("#authSubmitText")) $("#authSubmitText").textContent =
         admin
             ? "OPEN COMMAND CENTER"
             : signup
@@ -2905,19 +2905,19 @@ function setAuthMode(mode) {
                         : "ENTER WORLD";
 
 
-    $("#authSwitchText").textContent =
+    if ($("#authSwitchText")) $("#authSwitchText").textContent =
         signup
             ? "Already a player?"
             : "New player?";
 
 
-    $("#authSwitchButton").textContent =
+    if ($("#authSwitchButton")) $("#authSwitchButton").textContent =
         signup
             ? "LOGIN"
             : "CREATE ACCOUNT";
 
 
-    $("#adminLoginButton").textContent =
+    if ($("#adminLoginButton")) $("#adminLoginButton").textContent =
         admin
             ? "← BACK TO PLAYER LOGIN"
             : "⚙ LOGIN AS GUILD MASTER";
@@ -2999,26 +2999,26 @@ function setAuthMode(mode) {
     }
 
 
-    $("#authPassword").required =
+    if ($("#authPassword")) $("#authPassword").required =
         !signup && !forgot && !reset;
 
-    $("#authName").required =
+    if ($("#authName")) $("#authName").required =
         signup;
 
 
     if (mode === "login" || mode === "forgot") {
 
-        $("#authPassword").value = "";
+        if ($("#authPassword")) $("#authPassword").value = "";
 
     }
 
     if (!reset) {
 
-        $("#authResetCode").value = "";
+        if ($("#authResetCode")) $("#authResetCode").value = "";
 
-        $("#authNewPassword").value = "";
+        if ($("#authNewPassword")) $("#authNewPassword").value = "";
 
-        $("#authNewPasswordConfirm").value = "";
+        if ($("#authNewPasswordConfirm")) $("#authNewPasswordConfirm").value = "";
 
     }
 
@@ -3664,14 +3664,14 @@ function updateNavigation() {
 
     if (!currentUser) {
 
-        $("#accountLabel").textContent =
+        if ($("#accountLabel")) $("#accountLabel").textContent =
             "PLAYER";
 
         return;
     }
 
 
-    $("#accountLabel").textContent =
+    if ($("#accountLabel")) $("#accountLabel").textContent =
         currentUser.role === "admin"
             ? "ADMIN"
             : currentUser.name
@@ -3807,15 +3807,15 @@ function renderProfile() {
     if (!currentUser) return;
 
 
-    $("#profileName").textContent =
+    if ($("#profileName")) $("#profileName").textContent =
         currentUser.name;
 
 
-    $("#profileEmail").textContent =
+    if ($("#profileEmail")) $("#profileEmail").textContent =
         currentUser.email;
 
 
-    $("#profileAvatar").textContent =
+    if ($("#profileAvatar")) $("#profileAvatar").textContent =
         currentUser.role === "admin"
             ? "👑"
             : "🧙";
@@ -3825,15 +3825,15 @@ function renderProfile() {
         getLevelInfo(currentUser.xp);
 
 
-    $("#profileLevel").textContent =
+    if ($("#profileLevel")) $("#profileLevel").textContent =
         `LEVEL ${levelInfo.level}`;
 
 
-    $("#xpProgress").style.width =
+    if ($("#xpProgress")) $("#xpProgress").style.width =
         `${levelInfo.xpIntoLevel}%`;
 
 
-    $("#xpText").textContent =
+    if ($("#xpText")) $("#xpText").textContent =
         `${levelInfo.xpIntoLevel} / ${levelInfo.xpForNextLevel} XP`;
 
 
@@ -3985,11 +3985,13 @@ function openCheckout() {
                             p.id === item.productId
                     );
 
+                if (!product) return "";
+
                 return `
                     <div class="checkout-summary-row">
                         <span>
                             ${escapeHTML(product.name)}
-                            × ${escapeHTML(item.quantity)}
+                            × ${escapeHTML(String(item.quantity))}
                         </span>
 
                         <span>
@@ -4059,9 +4061,14 @@ function getCartTotal() {
 }
 
 
+let orderSubmitting = false;
+
 async function submitOrder(event) {
 
     event.preventDefault();
+
+    if (orderSubmitting) return;
+    orderSubmitting = true;
 
 
     if (!currentUser) {
@@ -4073,12 +4080,17 @@ async function submitOrder(event) {
 
         openAuth();
 
+        orderSubmitting = false;
+
         return;
 
     }
 
 
-    if (!cart.length) return;
+    if (!cart.length) {
+        orderSubmitting = false;
+        return;
+    }
 
 
     const total =
@@ -4117,6 +4129,8 @@ async function submitOrder(event) {
                         p.id === item.productId
                 );
 
+            if (!product) return null;
+
             return {
                 productId: product.id,
                 name: product.name,
@@ -4124,7 +4138,7 @@ async function submitOrder(event) {
                 quantity: item.quantity
             };
 
-        }),
+        }).filter(Boolean),
 
         total,
 
@@ -4252,6 +4266,8 @@ async function submitOrder(event) {
 
     navigateTo("profile");
 
+    orderSubmitting = false;
+
 }
 
 
@@ -4324,6 +4340,17 @@ function initializeAdmin() {
                         view.dataset.adminView === activeAdminTab
                     )
                 );
+
+
+                if (activeAdminTab === "overview") {
+                    renderAdminStats();
+                } else if (activeAdminTab === "orders") {
+                    renderAdminOrdersTable();
+                } else if (activeAdminTab === "products") {
+                    renderAdminProductsTable();
+                } else if (activeAdminTab === "customers") {
+                    renderAdminCustomersTable();
+                }
 
             }
         );
@@ -4446,15 +4473,15 @@ function renderAdminStats() {
         );
 
 
-    $("#adminRevenue").textContent =
+    if ($("#adminRevenue")) $("#adminRevenue").textContent =
         `$${revenue.toFixed(2)}`;
 
 
-    $("#adminOrders").textContent =
+    if ($("#adminOrders")) $("#adminOrders").textContent =
         orders.length;
 
 
-    $("#adminUsers").textContent =
+    if ($("#adminUsers")) $("#adminUsers").textContent =
         currentUser && !customers.length
             ? 1
             : customers.filter(
@@ -4463,7 +4490,7 @@ function renderAdminStats() {
               ).length;
 
 
-    $("#adminProducts").textContent =
+    if ($("#adminProducts")) $("#adminProducts").textContent =
         products.length;
 
 }
@@ -5077,11 +5104,11 @@ function viewOrderDetails(orderId) {
     if (!order) return;
 
 
-    $("#orderModalTitle").textContent =
+    if ($("#orderModalTitle")) $("#orderModalTitle").textContent =
         shortOrderId(order.id);
 
 
-    $("#orderDetailsContent").innerHTML = `
+    if ($("#orderDetailsContent")) $("#orderDetailsContent").innerHTML = `
 
         <div class="order-info-grid">
 
@@ -5505,15 +5532,19 @@ async function changeAdminPassword(event) {
 
     event.preventDefault();
 
+    const currentEl = $("#currentPassword");
+    const nextEl = $("#newPassword");
+    const confirmEl = $("#confirmPassword");
 
-    const current =
-        $("#currentPassword").value;
+    if (!currentEl || !nextEl || !confirmEl) {
+        toast("FORM ERROR", "Could not read password form.");
+        return;
+    }
 
-    const next =
-        $("#newPassword").value;
 
-    const confirm =
-        $("#confirmPassword").value;
+    const current = currentEl.value;
+    const next = nextEl.value;
+    const confirm = confirmEl.value;
 
 
     if (next !== confirm) {
@@ -5678,8 +5709,7 @@ function openAdminProductModal(productId = null) {
     const form =
         $("#adminProductForm");
 
-
-    form.reset();
+    if (form) form.reset();
 
 
     $("#editProductId").value = "";
@@ -6213,7 +6243,7 @@ function revealOracleResult() {
         getProductRarity(product);
 
 
-    $("#oracleTitle").textContent =
+    if ($("#oracleTitle")) $("#oracleTitle").textContent =
         "YOU HAVE DISCOVERED YOUR BREW.";
 
 
@@ -6522,10 +6552,10 @@ function revealRouletteResult(product) {
     rouletteSpinning = false;
 
 
-    $("#rouletteIcon").textContent =
+    if ($("#rouletteIcon")) $("#rouletteIcon").textContent =
         product.icon;
 
-    $("#rouletteTitle").textContent =
+    if ($("#rouletteTitle")) $("#rouletteTitle").textContent =
         "TEA DISCOVERED!";
 
 
@@ -6571,7 +6601,7 @@ function revealRouletteResult(product) {
 
     if (rarity === "legendary") {
 
-        $("#rouletteTitle").textContent =
+        if ($("#rouletteTitle")) $("#rouletteTitle").textContent =
             "✦ LEGENDARY DROP ✦";
 
         window.sfx?.legendary?.();
@@ -7001,7 +7031,7 @@ function showLevelUp(level) {
     if (!overlay) return;
 
 
-    $("#levelUpNumber").textContent =
+    if ($("#levelUpNumber")) $("#levelUpNumber").textContent =
         level;
 
 

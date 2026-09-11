@@ -772,6 +772,7 @@ function fxPlayToastSound(title) {
     ) {
 
         sfx.coin();
+        return;
 
     }
 

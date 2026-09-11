@@ -193,15 +193,27 @@ function msgBodyHtml(text) {
 
         /(https?:\/\/[^\s<]+)/g,
 
-        match => `
+        match => {
 
-            <a href="${match}"
+            /* Decode HTML entities from the escaped text
+               to recover the raw URL for the href attribute */
+            const rawUrl = match
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'");
 
-               target="_blank"
+            const encoded = rawUrl
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
 
-               rel="noopener noreferrer">${match}</a>
+            return `<a href="${encoded}" target="_blank" rel="noopener noreferrer">${match}</a>`;
 
-        `
+        }
 
     );
 
@@ -255,7 +267,12 @@ window.refreshTavern = function () {
 };
 
 
+let tavernBooting = false;
+
 async function bootTavern() {
+
+    if (tavernBooted || tavernBooting) return;
+    tavernBooting = true;
 
     await loadDirectory();
 
@@ -273,6 +290,7 @@ async function bootTavern() {
        boot actually finished */
 
     tavernBooted = true;
+    tavernBooting = false;
 
 }
 
@@ -432,22 +450,23 @@ function safeMediaUrl(rawUrl) {
         const parsed =
             new URL(value, location.href);
 
-        const base =
-            new URL(SUPABASE_URL, location.href);
-
         if (parsed.protocol !== "https:") {
             return "";
         }
 
-        if (parsed.origin !== base.origin) {
-            return "";
-        }
+        /* Accept Firebase Storage URLs and Supabase-style storage URLs */
+        const isFirebaseStorage =
+            parsed.hostname.includes("firebasestorage.googleapis.com");
 
-        if (
-            !parsed.pathname.startsWith(
+        const isSupabaseStorage =
+            parsed.pathname.startsWith(
                 "/storage/v1/object/public/tavern_media/"
-            )
-        ) {
+            ) ||
+            parsed.pathname.startsWith(
+                "/v1/object/public/tavern_media/"
+            );
+
+        if (!isFirebaseStorage && !isSupabaseStorage) {
             return "";
         }
 
@@ -1658,16 +1677,22 @@ async function acceptRequest(rowId) {
 
 async function declineRequest(rowId) {
 
-    await db
+    try {
+        const { error } = await db
 
-        .from("friendships")
+            .from("friendships")
 
-        .delete()
+            .delete()
 
-        .eq("id", rowId)
+            .eq("id", rowId)
 
-        .eq("addressee_id", me());
+            .eq("addressee_id", me());
 
+        if (error) throw error;
+    } catch (err) {
+        console.error(err);
+        toast("ACTION FAILED", "Could not decline request. Try again.");
+    }
 
     await refreshFriendState();
 
@@ -1676,13 +1701,21 @@ async function declineRequest(rowId) {
 
 async function removeBuddy(rowId) {
 
-    await db
+    try {
+        const { error } = await db
 
-        .from("friendships")
+            .from("friendships")
 
-        .delete()
+            .delete()
 
-        .eq("id", rowId);
+            .eq("id", rowId);
+
+        if (error) throw error;
+    } catch (err) {
+        console.error(err);
+        toast("ACTION FAILED", "Could not remove buddy. Try again.");
+        return;
+    }
 
 
     if (activeDmPartner) {
@@ -1754,8 +1787,10 @@ function openDm(partnerId) {
     renderFriendLists();
 
 
-    $("#tabLetters").textContent =
-        `✉ WITH ${nameOf(partnerId).toUpperCase()}`;
+    if ($("#tabLetters")) {
+        $("#tabLetters").textContent =
+            `✉ WITH ${nameOf(partnerId).toUpperCase()}`;
+    }
 
 
     $("#tabLetters")
@@ -1803,7 +1838,9 @@ function openDm(partnerId) {
 
     dmSeenIds.clear();
 
-    $("#dmMessages").innerHTML = "";
+    if ($("#dmMessages")) {
+        $("#dmMessages").innerHTML = "";
+    }
 
     loadDmHistory();
 
@@ -2221,6 +2258,10 @@ async function sendFloorMessage() {
 
         console.error(error);
 
+        if (!input.value) {
+            input.value = body;
+        }
+
         toast(
             "MESSAGE FAILED",
             "The tavern echo dropped it. Try again."
@@ -2291,6 +2332,8 @@ async function loadDmHistory() {
 
 
         for (const letter of letters) {
+
+            await ensureName(letter.sender_id);
 
             appendDmLetter(letter, false);
 

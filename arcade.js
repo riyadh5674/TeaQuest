@@ -406,7 +406,7 @@ function resetBrewGame(idleMode) {
 
     $("#brewButton")?.classList.remove("hidden-field");
 
-    $("#brewHint").textContent =
+    if ($("#brewHint")) $("#brewHint").textContent =
         "Press SPACE or tap BREW when the needle is in the green zone.";
 
 
@@ -674,16 +674,16 @@ function drawBrewFrame() {
 
 function updateBrewHud() {
 
-    $("#brewStreak").textContent =
+    if ($("#brewStreak")) $("#brewStreak").textContent =
         brewStreakValue;
 
-    $("#brewHeat").textContent =
+    if ($("#brewHeat")) $("#brewHeat").textContent =
         `x${Math.floor(brewStreakValue / 5) + 1}`;
 
     const best =
         getHighScore("perfect-brew");
 
-    $("#brewBestHud").textContent =
+    if ($("#brewBestHud")) $("#brewBestHud").textContent =
         best === null ? 0 : best;
 
 }
@@ -1241,8 +1241,11 @@ function drawLeafFrame() {
         } else if (item.type === "gold") {
 
             ctx.shadowColor = "#f5c95d";
+            ctx.shadowBlur = 12;
 
             ctx.fillText("✨", 0, 0);
+
+            ctx.shadowBlur = 0;
 
         } else {
             ctx.fillText("🪨", 0, 0);
@@ -1261,11 +1264,11 @@ function drawLeafFrame() {
 
 function updateLeafHud() {
 
-    $("#leafScore").textContent =
+    if ($("#leafScore")) $("#leafScore").textContent =
         leafScoreValue;
 
 
-    $("#leafLives").textContent =
+    if ($("#leafLives")) $("#leafLives").textContent =
         "♥".repeat(Math.max(0, leafLivesLeft)) +
         "·".repeat(Math.max(0, 3 - leafLivesLeft));
 
@@ -1273,7 +1276,7 @@ function updateLeafHud() {
     const best =
         getHighScore("leaf-catch");
 
-    $("#leafBestHud").textContent =
+    if ($("#leafBestHud")) $("#leafBestHud").textContent =
         best === null ? 0 : best;
 
 }
@@ -1410,6 +1413,8 @@ function initializeLeafCatch() {
     document.addEventListener(
         "keyup",
         event => {
+
+            if (!modal.classList.contains("open")) return;
 
             if (event.key === "ArrowLeft") {
                 leafKeys.left = false;
@@ -1749,16 +1754,16 @@ function handleMemoryMismatch() {
 
 function updateMemoryHud() {
 
-    $("#memoryMoves").textContent =
+    if ($("#memoryMoves")) $("#memoryMoves").textContent =
         memoryMovesCount;
 
-    $("#memoryPairs").textContent =
+    if ($("#memoryPairs")) $("#memoryPairs").textContent =
         `${memoryPairsFound} / ${memoryTotalPairs}`;
 
     const best =
         getHighScore("tea-memory");
 
-    $("#memoryBestHud").textContent =
+    if ($("#memoryBestHud")) $("#memoryBestHud").textContent =
         best === null ? "—" : best;
 
 }
@@ -1811,12 +1816,28 @@ function finishMemoryGame() {
 }
 
 
+function stopMemoryLoop() {
+
+    if (memoryFlipTimer) {
+
+        clearTimeout(memoryFlipTimer);
+
+        memoryFlipTimer = null;
+
+    }
+
+}
+
+
 function initializeTeaMemory() {
 
     const modal =
         $("#memoryModal");
 
     if (!modal) return;
+
+
+    watchModalClose(modal, stopMemoryLoop);
 
 
     $("#closeMemory")?.addEventListener(

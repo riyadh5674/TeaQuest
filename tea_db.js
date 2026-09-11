@@ -10,10 +10,20 @@
 
     const fb = window.firebase;
 
-    const db =
-        fb && fb.auth && fb.firestore && fb.storage
-            ? buildDb(fb)
-            : null;
+    let db = null;
+    try {
+        if (fb && fb.auth && fb.firestore && fb.storage) {
+            if (!fb.apps || !fb.apps.length) {
+                const cfg = window.FIREBASE_CONFIG;
+                if (cfg && cfg.apiKey) {
+                    fb.initializeApp(cfg);
+                }
+            }
+            db = buildDb(fb);
+        }
+    } catch (e) {
+        console.warn("TeaQuest backend init failed:", e);
+    }
 
     window.db = db;
 
@@ -281,10 +291,25 @@
             return this;
         };
 
+        TeaChain.prototype.match = function (obj) {
+            if (obj && typeof obj === "object") {
+                for (const key of Object.keys(obj)) {
+                    this.filters.push([key, obj[key]]);
+                }
+            }
+            return this;
+        };
+
+        TeaChain.prototype.or = function (clause) {
+            this.orClause = clause;
+            return this;
+        };
+
         TeaChain.prototype.then = function (resolve, reject) {
-            const p = this._exec();
-            p.then(resolve, reject);
-            return p;
+            if (!this._promise) {
+                this._promise = this._exec();
+            }
+            return this._promise.then(resolve, reject);
         };
 
 
@@ -349,6 +374,33 @@
             return q;
         }
 
+        function parseOrClause(clause) {
+            const groups = [];
+            const str = String(clause).trim();
+            if (!str) return groups;
+
+            /* Split on ),and( to separate groups.
+               Input format: and(col.eq.val,col.eq.val),and(col.eq.val,col.eq.val) */
+            const groupParts = str.split(/\),\s*and\(/);
+            for (let i = 0; i < groupParts.length; i++) {
+                let part = groupParts[i];
+                /* Strip leading/trailing "and(" and ")" */
+                part = part.replace(/^and\(/, "").replace(/\)$/, "").trim();
+                if (!part) continue;
+                const pairs = part.split(",");
+                const filters = [];
+                for (const pair of pairs) {
+                    /* Supabase uses col.eq.val syntax */
+                    const eq = pair.trim().split(".eq.");
+                    if (eq.length === 2) {
+                        filters.push([eq[0].trim(), eq[1].trim()]);
+                    }
+                }
+                if (filters.length) groups.push(filters);
+            }
+            return groups;
+        }
+
         TeaChain.prototype._exec = async function () {
 
             const table = this.table;
@@ -359,6 +411,52 @@
                 this.op === "insert"
             ) {
                 return appendOrderItems(this.pending);
+            }
+
+            /* .or() clause: run multiple queries and merge results */
+            if (this.orClause && this.op === "select") {
+                try {
+                    const groups = parseOrClause(this.orClause);
+                    const ref = col(table);
+                    const seen = new Set();
+                    const merged = [];
+                    for (const group of groups) {
+                        let q = ref;
+                        for (const [c, v] of group) {
+                            q = q.where(c, "==", v);
+                        }
+                        if (this.orderCol && this.orderCol !== "id") {
+                            q = q.orderBy(this.orderCol, this.orderAsc ? "asc" : "desc");
+                        }
+                        if (this.limitN > 0) {
+                            q = q.limit(this.limitN);
+                        }
+                        const snap = await q.get();
+                        for (const doc of snap.docs) {
+                            if (!seen.has(doc.id)) {
+                                seen.add(doc.id);
+                                merged.push(projectRow(doc, this.proj));
+                            }
+                        }
+                    }
+                    if (this.orderCol && this.orderCol !== "id") {
+                        merged.sort((a, b) => {
+                            const av = a[this.orderCol], bv = b[this.orderCol];
+                            if (av < bv) return this.orderAsc ? -1 : 1;
+                            if (av > bv) return this.orderAsc ? 1 : -1;
+                            return 0;
+                        });
+                    }
+                    const sliced = this.limitN > 0 ? merged.slice(0, this.limitN) : merged;
+                    return afterSelect(sliced, this.singleMode);
+                } catch (error) {
+                    return {
+                        data: null,
+                        error: {
+                            message: (error && error.message) || "Backend request failed."
+                        }
+                    };
+                }
             }
 
             const ref = col(table);
@@ -723,7 +821,7 @@
                         console.warn("presence listener", err);
                     }
                 },
-                () => {}
+                (err) => console.warn("Presence sync error:", err)
             );
             this.unsubs.push(unsub);
 
@@ -733,6 +831,7 @@
                 }, 20000);
             }
             this._heartbeat();
+
         };
 
         TeaChannel.prototype.subscribe = function (statusCb) {
