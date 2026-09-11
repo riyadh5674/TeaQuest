@@ -2687,6 +2687,9 @@ MC.injectCSS = function () {
   box-shadow: 0 0 30px rgba(255,0,0,0.3);
 }
 .mc-err .mc-eh { font-weight: 800; font-size: 20px; letter-spacing: 1px; margin-bottom: 10px; }
+.mc-err .mc-err-line { font-size: 18px; font-weight: 700; margin-bottom: 8px; padding: 6px 10px; background: rgba(0,0,0,0.35); border-radius: 6px; }
+.mc-err .mc-err-stack { font-size: 12px; opacity: 0.85; }
+.mc-err .mc-err-meta { margin-top: 10px; font-size: 11px; opacity: 0.6; }
 .mc-paused { position: absolute; inset: 0; background: rgba(5,6,9,0.72); backdrop-filter: blur(3px); z-index: 6; display: flex; align-items: center; justify-content: center; }
 .mc-paused.hidden, .mc-menu.hidden, .mc-death.hidden { display: none; }
 .mc-menu-card { background: #151a22; border: 1px solid #2b3646; border-radius: 14px; padding: 28px 34px; display: grid; gap: 12px; min-width: 340px; text-align: center; }
@@ -3064,11 +3067,16 @@ MC.showErr = function (msg) {
     if (MC.ui['menu']) MC.ui['menu'].classList.remove("hidden");
     const el = MC.ui && MC.ui['menu'] && MC.ui['menu'].querySelector('#mcErr');
     if (!el) return;
-    const info = "\n\n[Minecraft Quest v" + MC.VERSION + " | " + navigator.userAgent.slice(0,80) + "]";
-    el.innerHTML = '<div class="mc-eh">MINECRAFT QUEST ERROR</div><pre style="white-space:pre-wrap;margin:0">' + String(msg).replace(/</g,'&lt;') + info.replace(/</g,'&lt;') + '</pre>';
+    const text = String(msg);
+    const firstLine = text.split("\n")[0];
+    el.innerHTML =
+        '<div class="mc-eh">MINECRAFT QUEST ERROR</div>' +
+        '<div class="mc-err-line">' + firstLine.replace(/</g,'&lt;') + '</div>' +
+        '<div class="mc-err-stack">' + text.replace(/</g,'&lt;') + '</div>' +
+        '<div class="mc-err-meta">v' + MC.VERSION + ' · ' + (typeof navigator !== "undefined" ? navigator.userAgent.slice(0,90) : "?") + '</div>';
     el.style.display = 'block';
     try { el.scrollIntoView(); } catch(e) {}
-    console.error('[Minecraft Quest]', msg + info);
+    console.error('[Minecraft Quest]', text);
 };
 MC.hideErr = function () {
     const el = MC.ui && MC.ui['menu'] && MC.ui['menu'].querySelector('#mcErr');
