@@ -14,8 +14,7 @@
 const ARCADE_GAMES = {
     "perfect-brew": { label: "PERFECT BREW", mode: "max" },
     "leaf-catch": { label: "LEAF CATCH", mode: "max" },
-    "tea-memory": { label: "TEA MEMORY", mode: "min" },
-    "minecraft-quest": { label: "MINECRAFT QUEST", mode: "max" }
+    "tea-memory": { label: "TEA MEMORY", mode: "min" }
 };
 
 
@@ -138,9 +137,6 @@ function renderArcadeBests() {
     const memoryBest =
         $("#bestTeaMemory");
 
-    const mcBest =
-        $("#bestMinecraftQuest");
-
 
     const brew =
         getHighScore("perfect-brew");
@@ -150,9 +146,6 @@ function renderArcadeBests() {
 
     const memory =
         getHighScore("tea-memory");
-
-    const mc =
-        getHighScore("minecraft-quest");
 
 
     if (brewBest) {
@@ -168,11 +161,6 @@ function renderArcadeBests() {
     if (memoryBest) {
         memoryBest.textContent =
             memory === null ? "—" : `${memory} moves`;
-    }
-
-    if (mcBest) {
-        mcBest.textContent =
-            mc === null ? "—" : `${mc}`;
     }
 
 }

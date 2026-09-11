@@ -3915,12 +3915,6 @@ MC.boot = function () {
     MC.bindInput();
     // wire arcade integration
     MC.wireArcade();
-    // expose to arcade records
-    try {
-        if (window.ARCADE_GAMES && !window.ARCADE_GAMES["minecraft-quest"]) {
-            window.ARCADE_GAMES["minecraft-quest"] = { label: "MINECRAFT QUEST", mode: "max" };
-        }
-    } catch (e) {}
 };
 
 MC.wireArcade = function () {
