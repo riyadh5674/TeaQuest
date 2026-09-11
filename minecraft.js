@@ -16,7 +16,7 @@ const MC = window.MC = {};
 /* =========================================================
    01 · CORE
    ======================================================== */
-MC.VERSION = "1.0.0";
+MC.VERSION = "1.1.0";
 
 MC.CH  = 16;          // chunk horizontal size
 MC.WH  = 96;          // world height
@@ -2679,6 +2679,12 @@ MC.injectCSS = function () {
 .mc-modebar button.on { border-color: #5ce68a; color: #5ce68a; }
 .mc-help { color: #7d91ab; font-size: 12px; line-height: 1.8; min-width: 420px; max-width: 92vw; }
 .mc-help b { color: #b7c9e0; }
+.mc-err {
+  display: none; background: rgba(180,40,40,0.92); color: #fff; border: 2px solid #ff5555;
+  border-radius: 10px; padding: 18px 22px; margin: 6px 0 12px; white-space: pre-wrap; font-size: 14px;
+  line-height: 1.55; font-family: Consolas, monospace; min-width: 340px; max-width: 92vw; z-index: 9;
+}
+.mc-err .mc-eh { font-weight: 800; font-size: 16px; letter-spacing: 1px; margin-bottom: 8px; }
 .mc-paused { position: absolute; inset: 0; background: rgba(5,6,9,0.72); backdrop-filter: blur(3px); z-index: 6; display: flex; align-items: center; justify-content: center; }
 .mc-paused.hidden, .mc-menu.hidden, .mc-death.hidden { display: none; }
 .mc-menu-card { background: #151a22; border: 1px solid #2b3646; border-radius: 14px; padding: 28px 34px; display: grid; gap: 12px; min-width: 340px; text-align: center; }
@@ -2763,7 +2769,8 @@ MC.makeUI = function () {
   </div>
   <div class="mc-menu" id="mcMainMenu">
     <h1>MINECRAFT <b>QUEST</b></h1>
-    <div class="sub">TEAQUEST ARCADE · VOXEL SANDBOX</div>
+    <div class="sub">TEAQUEST ARCADE · VOXEL SANDBOX · v${MC.VERSION}</div>
+    <div id="mcErr" class="mc-err" style="display:none"></div>
     <div class="panel">
       <div class="mc-row"><label>SEED</label><input class="mc-input" id="mcSeed" value="" spellcheck="false"></div>
       <div class="mc-modebar" id="mcModeBar">
@@ -2866,9 +2873,15 @@ MC.refreshMenu = function () {
    05 · WORLD START / SAVE
    ======================================================== */
 MC.startNew = function () {
-    const seed = (parseInt(MC.ui['seedInput'].value, 10) >>> 0) || (Math.random() * 0xffffffff | 0) >>> 0;
-    const mode = MC.ui.mode;
-    MC.buildWorld(seed, mode, false);
+    try {
+        MC.hideErr();
+        const seed = (parseInt(MC.ui['seedInput'].value, 10) >>> 0) || (Math.random() * 0xffffffff | 0) >>> 0;
+        const mode = MC.ui.mode;
+        MC.buildWorld(seed, mode, false);
+    } catch (e) {
+        console.error(e);
+        MC.showErr("Click Create World failed: " + (e && e.stack || e && e.message || e));
+    }
 };
 MC.continueWorld = function () {
     const data = MC.loadWorld();
@@ -3043,6 +3056,17 @@ MC.setPanel = function (which) {
 /* =========================================================
    05 · TOAST + HUD
    ======================================================== */
+MC.showErr = function (msg) {
+    const el = MC.ui && MC.ui['menu'] && MC.ui['menu'].querySelector('#mcErr');
+    if (!el) return;
+    el.innerHTML = '<div class="mc-eh">MINECRAFT QUEST error</div>' + msg;
+    el.style.display = 'block';
+    console.error('[Minecraft Quest]', msg);
+};
+MC.hideErr = function () {
+    const el = MC.ui && MC.ui['menu'] && MC.ui['menu'].querySelector('#mcErr');
+    if (el) el.style.display = 'none';
+};
 MC.toast = function (msg, ms) {
     const t = MC.ui['toast'];
     if (!t) return;
@@ -3725,24 +3749,28 @@ MC.startLoop = function () {
 };
 
 MC.frame = function (dt) {
-    if (MC.state.running && MC.state.mode) {
-        MC.step(dt);
-        MC.renderFrame(dt);
-        MC.tickFurnace(dt);
-        // HUD
-        MC.renderHotbar();
-        MC.renderBars();
-        MC.tickClock();
-        // player hurt flash
-        if (MC.player.hurtTimer > 0) {
-            MC.ui['flash'].style.opacity = Math.min(0.7, MC.player.hurtTimer * 2);
-        } else {
-            MC.ui['flash'].style.opacity = 0;
+    try {
+        if (MC.state.running && MC.state.mode) {
+            MC.step(dt);
+            MC.renderFrame(dt);
+            MC.tickFurnace(dt);
+            // HUD
+            MC.renderHotbar();
+            MC.renderBars();
+            MC.tickClock();
+            // player hurt flash
+            if (MC.player.hurtTimer > 0) {
+                MC.ui['flash'].style.opacity = Math.min(0.7, MC.player.hurtTimer * 2);
+            } else {
+                MC.ui['flash'].style.opacity = 0;
+            }
+            // selected block box
+            const eye = [MC.player.pos[0], MC.player.pos[1] + MC.EYE, MC.player.pos[2]];
+            const fwd = MC.dirFromAngles(MC.player.yaw, MC.player.pitch);
+            MC.updateSelectorBox(MC.gfx.view, MC.gfx.proj, eye, fwd);
         }
-        // selected block box
-        const eye = [MC.player.pos[0], MC.player.pos[1] + MC.EYE, MC.player.pos[2]];
-        const fwd = MC.dirFromAngles(MC.player.yaw, MC.player.pitch);
-        MC.updateSelectorBox(MC.gfx.view, MC.gfx.proj, eye, fwd);
+    } catch (e) {
+        if (!MC._frameErrShown) { MC._frameErrShown = true; console.error('[Minecraft Quest render]', e); MC.showErr("Render error: " + (e && e.message || e)); }
     }
     // mouse rotate
     if (MC.input.locked && MC.state.running && MC.player && !MC.ui.panel) {
@@ -3860,6 +3888,7 @@ MC.openMinecraft = function () {
 };
 
 MC.boot = function () {
+    console.log("Minecraft Quest v" + MC.VERSION + " boot");
     MC.injectCSS();
     MC.bindInput();
     // wire arcade integration
