@@ -1406,8 +1406,8 @@ MC.gfx = (() => {
         cv.width = cv.height = 64;
         const ctx = cv.getContext("2d");
         const g = ctx.createRadialGradient(32, 32, 4, 32, 32, 32);
-        g.addColorStop(0, `rgba(${inner},${innerA??1})`);
-        g.addColorStop(1, `rgba(${outer},0)`);
+        g.addColorStop(0, `rgba(${inner},${innerA ?? 1})`);
+        g.addColorStop(1, `rgba(${outer})`);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, 64, 64);
         return cv;
