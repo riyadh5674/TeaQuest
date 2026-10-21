@@ -1668,6 +1668,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     initializeOracle();
 
+    initializeEditProfile();
+
 
     await restoreSession();
 
@@ -4123,6 +4125,192 @@ function renderProfile() {
 
             `)
             .join("");
+
+}
+
+
+// ============ EDIT PROFILE ============
+
+function initializeEditProfile() {
+
+    const editBtn = $("#editProfileButton");
+    const editSection = $("#editProfileSection");
+    const cancelBtn = $("#cancelEditProfile");
+    const form = $("#editProfileForm");
+
+    if (!editBtn || !editSection) return;
+
+    editBtn.addEventListener("click", () => {
+        populateEditForm();
+        editSection.classList.remove("hidden-field");
+        editBtn.classList.add("hidden-field");
+        window.scrollTo({ top: editSection.offsetTop - 100, behavior: "smooth" });
+    });
+
+    cancelBtn?.addEventListener("click", () => {
+        editSection.classList.add("hidden-field");
+        editBtn.classList.remove("hidden-field");
+    });
+
+    form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        await saveProfileChanges();
+    });
+
+}
+
+function populateEditForm() {
+
+    if (!currentUser) return;
+
+    const fields = [
+        "FirstName", "LastName", "DisplayName", "Email", "Phone", "DOB",
+        "Gender", "Address1", "Address2", "City", "State", "PostalCode",
+        "Country", "Newsletter", "SMS", "Marketing"
+    ];
+
+    const mapping = {
+        FirstName: "firstName",
+        LastName: "lastName",
+        DisplayName: "name",
+        Email: "email",
+        Phone: "phone",
+        DOB: "dateOfBirth",
+        Gender: "gender",
+        Address1: "addressLine1",
+        Address2: "addressLine2",
+        City: "city",
+        State: "stateProvince",
+        PostalCode: "postalCode",
+        Country: "country",
+        Newsletter: "newsletterOptIn",
+        SMS: "smsOptIn",
+        Marketing: "marketingOptIn"
+    };
+
+    fields.forEach(field => {
+        const el = $("#edit" + field);
+        if (el) {
+            const userField = mapping[field];
+            if (userField && currentUser[userField] !== undefined) {
+                if (el.type === "checkbox") {
+                    el.checked = !!currentUser[userField];
+                } else {
+                    el.value = currentUser[userField] || "";
+                }
+            }
+        }
+    });
+
+}
+
+async function saveProfileChanges() {
+
+    if (!currentUser || !db) return;
+
+    const submitBtn = $("#editProfileForm button[type=submit]");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "SAVING...";
+    }
+
+    const updates = {
+        name: $("#editDisplayName")?.value?.trim(),
+        first_name: $("#editFirstName")?.value?.trim(),
+        last_name: $("#editLastName")?.value?.trim(),
+        phone: $("#editPhone")?.value?.trim(),
+        date_of_birth: $("#editDOB")?.value || "",
+        gender: $("#editGender")?.value || "",
+        address_line1: $("#editAddress1")?.value?.trim(),
+        address_line2: $("#editAddress2")?.value?.trim(),
+        city: $("#editCity")?.value?.trim(),
+        state_province: $("#editState")?.value?.trim(),
+        postal_code: $("#editPostalCode")?.value?.trim(),
+        country: $("#editCountry")?.value || "US",
+        newsletter_opt_in: $("#editNewsletter")?.checked || false,
+        sms_opt_in: $("#editSMS")?.checked || false,
+        marketing_opt_in: $("#editMarketing")?.checked || false
+    };
+
+    // Validation
+    if (!updates.first_name) {
+        toast("ERROR", "First name is required");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE CHANGES"; }
+        return;
+    }
+    if (!updates.last_name) {
+        toast("ERROR", "Last name is required");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE CHANGES"; }
+        return;
+    }
+    if (!updates.name) {
+        toast("ERROR", "Display name is required");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE CHANGES"; }
+        return;
+    }
+
+    // Validate DOB
+    if (updates.date_of_birth) {
+        const birthDate = new Date(updates.date_of_birth);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+        if (age < 13) {
+            toast("ERROR", "You must be at least 13 years old");
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE CHANGES"; }
+            return;
+        }
+    }
+
+    try {
+        const { error } = await db
+            .from("profiles")
+            .update(updates)
+            .eq("id", currentUser.id);
+
+        if (error) throw error;
+
+        // Update local currentUser
+        Object.assign(currentUser, {
+            name: updates.name,
+            firstName: updates.first_name,
+            lastName: updates.last_name,
+            phone: updates.phone,
+            dateOfBirth: updates.date_of_birth,
+            gender: updates.gender,
+            addressLine1: updates.address_line1,
+            addressLine2: updates.address_line2,
+            city: updates.city,
+            stateProvince: updates.state_province,
+            postalCode: updates.postal_code,
+            country: updates.country,
+            newsletterOptIn: updates.newsletter_opt_in,
+            smsOptIn: updates.sms_opt_in,
+            marketingOptIn: updates.marketing_opt_in
+        });
+
+        saveStorage("teaquest_currentUser", currentUser);
+        renderProfile();
+
+        // Hide edit section
+        const editSection = $("#editProfileSection");
+        const editBtn = $("#editProfileButton");
+        if (editSection) editSection.classList.add("hidden-field");
+        if (editBtn) editBtn.classList.remove("hidden-field");
+
+        toast("PROFILE UPDATED", "Your changes have been saved.");
+        window.sfx?.achievement?.();
+
+    } catch (error) {
+        console.error("Profile update failed:", error);
+        toast("SAVE FAILED", "Could not update profile. Try again.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "SAVE CHANGES";
+        }
+    }
 
 }
 

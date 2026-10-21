@@ -921,6 +921,208 @@
             LOG OUT
         </button>
 
+        <button class="pixel-button secondary" id="editProfileButton">
+            EDIT PROFILE
+        </button>
+
+    </div>
+
+
+    <!-- EDIT PROFILE MODAL (inline in profile page) -->
+    <div id="editProfileSection" class="orders-section hidden-field">
+
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">ACCOUNT SETTINGS</span>
+                <h2>EDIT PROFILE</h2>
+            </div>
+        </div>
+
+        <form id="editProfileForm" class="profile-edit-form">
+
+            <div class="form-section-divider">
+                <span>BASIC INFO</span>
+            </div>
+
+            <div class="form-row">
+                <label>
+                    FIRST NAME
+                    <input
+                        id="editFirstName"
+                        type="text"
+                        autocomplete="given-name"
+                        maxlength="50"
+                    >
+                </label>
+                <label>
+                    LAST NAME
+                    <input
+                        id="editLastName"
+                        type="text"
+                        autocomplete="family-name"
+                        maxlength="50"
+                    >
+                </label>
+            </div>
+
+            <label>
+                DISPLAY NAME
+                <input
+                    id="editDisplayName"
+                    type="text"
+                    required
+                    autocomplete="name"
+                    maxlength="30"
+                >
+            </label>
+
+            <label>
+                EMAIL
+                <input
+                    id="editEmail"
+                    type="email"
+                    required
+                    autocomplete="email"
+                    readonly
+                >
+                <small class="field-hint">Email cannot be changed. Contact support if needed.</small>
+            </label>
+
+            <div class="form-row">
+                <label>
+                    PHONE
+                    <input
+                        id="editPhone"
+                        type="tel"
+                        autocomplete="tel"
+                        placeholder="+1 (555) 000-0000"
+                        maxlength="20"
+                    >
+                </label>
+                <label>
+                    DATE OF BIRTH
+                    <input
+                        id="editDOB"
+                        type="date"
+                        autocomplete="bday"
+                        max="2010-01-01"
+                    >
+                </label>
+            </div>
+
+            <label>
+                GENDER
+                <select id="editGender" autocomplete="sex">
+                    <option value="">Select (optional)</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+            </label>
+
+            <div class="form-section-divider">
+                <span>DELIVERY ADDRESS</span>
+            </div>
+
+            <label>
+                ADDRESS LINE 1
+                <input
+                    id="editAddress1"
+                    type="text"
+                    autocomplete="street-address"
+                    placeholder="Street address, P.O. box"
+                    maxlength="100"
+                >
+            </label>
+
+            <label>
+                ADDRESS LINE 2
+                <input
+                    id="editAddress2"
+                    type="text"
+                    autocomplete="address-line2"
+                    placeholder="Apartment, suite, unit (optional)"
+                    maxlength="100"
+                >
+            </label>
+
+            <div class="form-row">
+                <label>
+                    CITY
+                    <input
+                        id="editCity"
+                        type="text"
+                        autocomplete="address-level2"
+                        maxlength="50"
+                    >
+                </label>
+                <label>
+                    STATE / PROVINCE
+                    <input
+                        id="editState"
+                        type="text"
+                        autocomplete="address-level1"
+                        maxlength="50"
+                    >
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label>
+                    POSTAL CODE
+                    <input
+                        id="editPostalCode"
+                        type="text"
+                        autocomplete="postal-code"
+                        maxlength="20"
+                    >
+                </label>
+                <label>
+                    COUNTRY
+                    <select id="editCountry" autocomplete="country">
+                        <option value="US">United States</option>
+                        <option value="CA">Canada</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="AU">Australia</option>
+                        <option value="DE">Germany</option>
+                        <option value="FR">France</option>
+                        <option value="JP">Japan</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="form-section-divider">
+                <span>PREFERENCES</span>
+            </div>
+
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="editNewsletter" autocomplete="off">
+                    <span>Subscribe to newsletter for tea updates & offers</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="editSMS" autocomplete="off">
+                    <span>Receive SMS notifications for orders</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="editMarketing" autocomplete="off">
+                    <span>Allow personalized marketing emails</span>
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="pixel-button secondary" id="cancelEditProfile">
+                    CANCEL
+                </button>
+                <button type="submit" class="pixel-button primary">
+                    SAVE CHANGES
+                </button>
+            </div>
+
+        </form>
+
     </div>
 
 
