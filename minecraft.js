@@ -29,7 +29,11 @@ MC.lerp  = (a, b, t) => a + (b - a) * t;
 
 /* ---------- seeded rng & hashing ---------- */
 function hash2i(x, z, seed) {
-    let h = (x * 374761393 + z * 668265263 + seed * 1442695040888963407) | 0;
+    /* Math.imul keeps the exact low 32 bits. The original
+       `seed * 1442695040888963407` exceeded Number.MAX_SAFE_INTEGER
+       and silently lost precision, making the hash unreliable. */
+    let h = (Math.imul(x, 374761393) + Math.imul(z, 668265263) +
+        Math.imul(seed, 4150755584)) | 0;
     h = Math.imul(h ^ (h >>> 13), 1274126177);
     return (h ^ (h >>> 16)) >>> 0;
 }
@@ -599,7 +603,7 @@ MC.World = class World {
         this._d = new Map();         // "x,z" -> dessert flag
     }
     hAt(x, z) {
-        const k = x + "," + z;
+        const k = `${x},${  z}`;
         let h = this._h.get(k);
         if (h === undefined) {
             h = terrainHeight(x, z, this.seed);
@@ -609,7 +613,7 @@ MC.World = class World {
         return h;
     }
     dAt(x, z) {
-        const k = x + "," + z;
+        const k = `${x},${  z}`;
         let v = this._d.get(k);
         if (v === undefined) {
             v = isDesert(x, z, this.seed) ? 1 : 0;
@@ -619,7 +623,7 @@ MC.World = class World {
         return v;
     }
 
-    key(cx, cz) { return cx + "," + cz; }
+    key(cx, cz) { return `${cx},${  cz}`; }
     chunk(cx, cz) {
         const k = this.key(cx, cz);
         let c = this.chunks.get(k);
@@ -655,7 +659,7 @@ MC.World = class World {
             if (lz === 15) this.markDirty(cx, cz + 1);
         }
     }
-    markDirty(cx, cz) { this.dirty.set(cx + "," + cz, true); }
+    markDirty(cx, cz) { this.dirty.set(`${cx},${  cz}`, true); }
 
     blockInfo(id) { return BLOCKS[id] || BLOCKS[0]; }
 
@@ -757,7 +761,7 @@ MC.World = class World {
                     for (let bx = 0; bx < MC.CH; bx++) {
                         const w = c[this.index(bx, y, bz)];
                         const re = this.generatedBlock(cx * MC.CH + bx, y, cz * MC.CH + bz);
-                        if (w !== re) out[(cx * MC.CH + bx) + "," + y + "," + (cz * MC.CH + bz)] = w;
+                        if (w !== re) out[`${cx * MC.CH + bx},${  y},${  cz * MC.CH + bz}`] = w;
                     }
                 }
             }
@@ -795,7 +799,7 @@ MC.buildMesh = (world, cx, cz) => {
 
     const faces = {}; // per tile-uv accumulation (floats & uints)
     const keyOf = (u0, v0, u1, v1, shade, isWater) =>
-        (isWater ? "water_" : "opaque_") + u0.toFixed(3) + "_" + v0.toFixed(3) + "_" + u1.toFixed(3) + "_" + v1.toFixed(3) + "_s" + (shade*100|0);
+        `${(isWater ? "water_" : "opaque_") + u0.toFixed(3)}_${  v0.toFixed(3)}_${  u1.toFixed(3)}_${  v1.toFixed(3)}_s${  shade*100|0}`;
     const buckets = new Map(); // key -> {v:[], i:[], n:0, water:bool}
 
     const addFace = (x, y, z, u0, v0, u1, v1, shade, nx, ny, nz, isWater) => {
@@ -1025,7 +1029,7 @@ MC.mat4.multiply = (out, a, b) => {
     return out;
 };
 MC.mat4.translate = (out, a, v) => {
-    let x=v[0],y=v[1],z=v[2];
+    const x=v[0],y=v[1],z=v[2];
     out[12]=a[0]*x+a[4]*y+a[8]*z+a[12];
     out[13]=a[1]*x+a[5]*y+a[9]*z+a[13];
     out[14]=a[2]*x+a[6]*y+a[10]*z+a[14];
@@ -1329,7 +1333,8 @@ MC.gfx = (() => {
     let proj, view, model, mlook;
     let progBlock, progSky, progCloud, progBill, progStar, progUni;
     let dome, starBuf, quadUv, quadIdxBuf;
-    let cloudTex, billTexs = {};
+    let cloudTex;
+    const billTexs = {};
     let shadeAttribs;
 
     const renderList = new Map();   // "cx,cz" -> ChunkRender
@@ -1515,7 +1520,7 @@ MC.gfx = (() => {
 
     // ----- chunk meshing orchestration -----
     const meshChunk = (cx, cz) => {
-        const key = cx + "," + cz;
+        const key = `${cx},${  cz}`;
         const existing = renderList.get(key);
         if (existing) { existing.dispose(gl); renderList.delete(key); }
         const mesh = MC.buildMesh(world, cx, cz);
@@ -1524,7 +1529,7 @@ MC.gfx = (() => {
         world.dirty.delete(key);
     };
 
-    const markDirty = (cx, cz) => { toBuild.add(cx + "," + cz); };
+    const markDirty = (cx, cz) => { toBuild.add(`${cx},${  cz}`); };
 
     const processQueued = (limit) => {
         let n = 0;
@@ -1542,7 +1547,8 @@ MC.gfx = (() => {
     const bindVao = (prog, attrs) => {
         // attrs: array of {name,size,offset}
         const gl0 = gl;
-        let stride = 0, offs = 0;
+        let stride = 0;
+        const offs = 0;
         for (const a of attrs) stride += a.size * 4;
         let o = 0;
         for (const a of attrs) {
@@ -1693,7 +1699,7 @@ MC.gfx = (() => {
     };
 
     // mob skinning & unit cube (used by part 4)
-    var viewM = null, projM = null, fogC = [0,0,0];
+    let viewM = null, projM = null, fogC = [0,0,0];
     MC.setWorldMatrix = (v, p, f) => { viewM = v; projM = p; if (f) fogC = f; };
 
     MC.getMobState = () => ({ progUni, gl, atlasTex: MC.atlasTex, viewM, projM, fogC });
@@ -1796,7 +1802,7 @@ MC.gfx = (() => {
         meshChunk,
         markDirty,
         processQueued,
-        hasChunk: (wx, wz) => renderList.has(wx + "," + wz),
+        hasChunk: (wx, wz) => renderList.has(`${wx},${  wz}`),
         drawSky,
         drawChunks,
         drawClouds,
@@ -2074,7 +2080,7 @@ MC.tickFuses = (dt) => {
             MC.fuses.splice(i, 1);
             // light emissive actor visuals omitted; re-fetch block (may have been replaced)
             if (MC.world.getBlock(f.x, f.y, f.z) === B_TNT)
-                MC.explode(f.x, f.y, f.z, 4);
+                {MC.explode(f.x, f.y, f.z, 4);}
         }
     }
 };
@@ -2252,7 +2258,7 @@ MC.Player.prototype.moveAxis = function (dx, dy, dz) {
 
 MC.Player.prototype.update = function (dt) {
     const inp = MC.input;
-    const keys = inp.keys;
+    const {keys} = inp;
     const p = this;
 
     // water state
@@ -2403,7 +2409,8 @@ MC.setBlockWithDrops = function (x, y, z, id, p) {
     MC.gfx.markDirty(x >> 4, z >> 4);
     if (old && id === 0) {
         const bl = BLOCKS[old];
-        let dropId = old, dropCount = 1;
+        let dropId = old;
+        const dropCount = 1;
         if (bl.drop !== undefined && bl.drop !== 0 && bl.drop !== old) dropId = bl.drop;
         else if (bl.drop === 0 && bl.hardness >= 0) dropId = 0;
         if (old === B_LEAVES && Math.random() < 0.08) { dropId = I_STICK; }
@@ -2539,7 +2546,7 @@ MC.state = {
 MC.step = function (dt) {
     if (!MC.state.running || !MC.world) return;
     MC.dtLast = dt;
-    let timeScale = 1;
+    const timeScale = 1;
     MC.state.dayTime += dt * 3.6; // ~11 min full day
     if (MC.state.dayTime > 24000) MC.state.dayTime -= 24000;
 
@@ -2579,7 +2586,7 @@ MC.renderFrame = function (dt) {
 
     G.drawSky(G.view, G.proj, eye, sky);
 
-    const fog = sky.fog;
+    const {fog} = sky;
     G.drawChunks(G.view, G.proj, eye, fog, 80, 240, false);
     G.drawClouds(G.view, G.proj, fog, MC.state.dayTime, 80);
     G.drawChunks(G.view, G.proj, eye, fog, 80, 240, true);
@@ -2888,7 +2895,7 @@ MC.startNew = function () {
     try {
         MC.hideErr();
         const seed = (parseInt(MC.ui['seedInput'].value, 10) >>> 0) || (Math.random() * 0xffffffff | 0) >>> 0;
-        const mode = MC.ui.mode;
+        const {mode} = MC.ui;
         MC.buildWorld(seed, mode, false);
     } catch (e) {
         console.error(e);
@@ -2971,7 +2978,7 @@ MC.cleanupWorld = function () {
 };
 
 MC.intro = function () {
-    MC.toast("Welcome to Minecraft Quest " + (MC.player.mode === "creative" ? "— Creative" : "— Survival"), 2600);
+    MC.toast(`Welcome to Minecraft Quest ${  MC.player.mode === "creative" ? "— Creative" : "— Survival"}`, 2600);
 };
 
 MC.saveAndTitle = function () {
@@ -3077,10 +3084,10 @@ MC.showErr = function (msg) {
     const text = String(msg);
     const firstLine = text.split("\n")[0];
     el.innerHTML =
-        '<div class="mc-eh">MINECRAFT QUEST ERROR</div>' +
-        '<div class="mc-err-line">' + firstLine.replace(/</g,'&lt;') + '</div>' +
-        '<div class="mc-err-stack">' + text.replace(/</g,'&lt;') + '</div>' +
-        '<div class="mc-err-meta">v' + MC.VERSION + ' · ' + (typeof navigator !== "undefined" ? navigator.userAgent.slice(0,90) : "?") + '</div>';
+        `<div class="mc-eh">MINECRAFT QUEST ERROR</div>` +
+        `<div class="mc-err-line">${  firstLine.replace(/</g,'&lt;')}</div>` +
+        `<div class="mc-err-stack">${  text.replace(/</g,'&lt;')}</div>` +
+        `<div class="mc-err-meta">v${  MC.VERSION} · ${  typeof navigator !== "undefined" ? navigator.userAgent.slice(0,90) : "?"}</div>`;
     el.style.display = 'block';
     try { el.scrollIntoView(); } catch(e) {}
     console.error('[Minecraft Quest]', text);
@@ -3106,7 +3113,7 @@ MC.renderHotbar = function () {
     for (let i = 0; i < 9; i++) {
         const slot = p.inventory[i];
         const d = document.createElement("div");
-        d.className = "mc-slot" + (i === p.hotbarSlot ? " sel" : "");
+        d.className = `mc-slot${  i === p.hotbarSlot ? " sel" : ""}`;
         if (slot.id > 0) {
             const ic = document.createElement("canvas");
             ic.className = "mc-ic";
@@ -3141,7 +3148,7 @@ MC.renderBars = function () {
     for (let i = 0; i < 10; i++) {
         const s = document.createElement("span");
         s.className = "mc-heart";
-        const hp = p.hp;
+        const {hp} = p;
         s.textContent = "♥";
         s.style.opacity = hp >= (i + 1) * 2 ? 1 : hp >= i * 2 + 1 ? 0.55 : 0.18;
         s.style.color = "#ff5a5a";
@@ -3164,7 +3171,7 @@ MC.tickClock = function () {
     const hours = Math.floor((t / 1000) + 6) % 24;
     const mins = Math.floor((t % 1000) / 1000 * 60);
     MC.ui['clock'].textContent =
-        String(hours).padStart(2, "0") + ":" + String(mins).padStart(2, "0");
+        `${String(hours).padStart(2, "0")}:${  String(mins).padStart(2, "0")}`;
 };
 
 MC.renderDebug = function () {
@@ -3187,30 +3194,31 @@ MC.updateSelectorBox = function (viewM, projM, eye, fwd) {
     s.classList.remove("hidden");
     // project the 8 corners of the block cube
     const corners = [];
-    for (let dx = 0; dx < 2; dx++) for (let dy = 0; dy < 2; dy++) for (let dz = 0; dz < 2; dz++)
-        corners.push([hit.x + dx, hit.y + dy, hit.z + dz]);
+    for (let dx = 0; dx < 2; dx++) {for (let dy = 0; dy < 2; dy++) {for (let dz = 0; dz < 2; dz++)
+        {corners.push([hit.x + dx, hit.y + dy, hit.z + dz]);}}}
     const pts = corners.map(c => MC.project(viewM, projM, c, MC.canvas));
-    if (pts.some(p => p[2] > 1 && p[2] < -1)) { }
+    // NOTE: the depth test was a no-op (empty block) and has been
+    // removed. Bounding is driven by the min/max below.
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     const ox = Math.min(...xs), oy = Math.min(...ys), w = Math.max(...xs) - ox, h = Math.max(...ys) - oy;
-    s.style.left = ox + "px";
-    s.style.top = oy + "px";
-    s.style.width = Math.max(1, w) + "px";
-    s.style.height = Math.max(1, h) + "px";
+    s.style.left = `${ox}px`;
+    s.style.top = `${oy}px`;
+    s.style.width = `${Math.max(1, w)}px`;
+    s.style.height = `${Math.max(1, h)}px`;
 };
 
 MC.project = function (view, proj, worldPt, canvas) {
     const v = view, p = proj;
     // apply view
-    let x = worldPt[0], y = worldPt[1], z = worldPt[2];
-    let cx = v[0] * x + v[4] * y + v[8] * z + v[12];
-    let cy = v[1] * x + v[5] * y + v[9] * z + v[13];
-    let cz = v[2] * x + v[6] * y + v[10] * z + v[14];
-    let cw = v[3] * x + v[7] * y + v[11] * z + v[15];
+    const x = worldPt[0], y = worldPt[1], z = worldPt[2];
+    const cx = v[0] * x + v[4] * y + v[8] * z + v[12];
+    const cy = v[1] * x + v[5] * y + v[9] * z + v[13];
+    const cz = v[2] * x + v[6] * y + v[10] * z + v[14];
+    const cw = v[3] * x + v[7] * y + v[11] * z + v[15];
     // apply proj
-    let nx = p[0] * cx + p[4] * cy + p[8] * cz + p[12] * cw;
-    let ny = p[1] * cx + p[5] * cy + p[9] * cz + p[13] * cw;
-    let nw = p[3] * cx + p[7] * cy + p[11] * cz + p[15] * cw;
+    const nx = p[0] * cx + p[4] * cy + p[8] * cz + p[12] * cw;
+    const ny = p[1] * cx + p[5] * cy + p[9] * cz + p[13] * cw;
+    const nw = p[3] * cx + p[7] * cy + p[11] * cz + p[15] * cw;
     const ndcX = nx / nw, ndcY = ny / nw;
     return [
         (ndcX * 0.5 + 0.5) * canvas.width,
@@ -3282,7 +3290,7 @@ MC.openInventory = function () {
         cellEls.push(d);
         d.addEventListener("click", () => {
             // place picked item or take
-            const pick = MC.panelState.pick;
+            const {pick} = MC.panelState;
             if (pick && pick.id > 0) {
                 if (cSlots[i] === 0 && MC.player.consumeItem(pick.id, 1)) {
                     cSlots[i] = pick.id;
@@ -3301,7 +3309,7 @@ MC.openInventory = function () {
     const res = document.createElement("div");
     res.className = "mc-result"; res.id = "mcCraftRes";
     craftzone.appendChild(res);
-    const recZone = { cgrid: cgrid, res, cSlots, cellEls };
+    const recZone = { cgrid, res, cSlots, cellEls };
     const title2 = document.createElement("div");
     title2.style.cssText = "font-size:12px;color:#8aa0bb;margin-bottom:6px;";
     title2.textContent = "Crafting";
@@ -3365,7 +3373,7 @@ MC.updateCraft = (cSlots, recZone) => {
         g.drawImage(MC.atlasCanvas, ...MC.uvrect(MC.itemTexture(rec.out)), 0, 0, 32, 32);
         recZone.res.appendChild(ic);
         const c = document.createElement("span");
-        c.className = "mc-cnt"; c.textContent = "×" + rec.n;
+        c.className = "mc-cnt"; c.textContent = `×${  rec.n}`;
         recZone.res.appendChild(c);
         recZone.res.dataset.out = rec.out;
         recZone.res.dataset.n = rec.n;
@@ -3386,7 +3394,7 @@ MC.updateCraft = (cSlots, recZone) => {
 MC.pickSlot = function (idx, e) {
     const p = MC.player;
     const slot = p.inventory[idx];
-    const pick = MC.panelState.pick;
+    const {pick} = MC.panelState;
     const right = e && (e.button === 2 || e.metaKey || e.ctrlKey);
     if (pick && pick.id > 0) {
         // place picked into slot
@@ -3452,7 +3460,7 @@ MC.openCraftTable = function () {
         d.className = "mc-slot";
         cellEls.push(d);
         d.addEventListener("click", () => {
-            const pick = MC.panelState.pick;
+            const {pick} = MC.panelState;
             if (pick && pick.id > 0) {
                 if (cSlots[i] === 0 && MC.player.consumeItem(pick.id, 1)) {
                     cSlots[i] = pick.id;
@@ -3519,7 +3527,7 @@ MC.updateCraft3 = (cSlots, res) => {
         g.drawImage(MC.atlasCanvas, ...MC.uvrect(MC.itemTexture(rec.out)), 0, 0, 32, 32);
         res.appendChild(ic);
         const c = document.createElement("span");
-        c.className = "mc-cnt"; c.textContent = "×" + rec.n;
+        c.className = "mc-cnt"; c.textContent = `×${  rec.n}`;
         res.appendChild(c);
         res.onclick = () => {
             MC.player.addItem(rec.out, rec.n);
@@ -3606,7 +3614,7 @@ MC.renderFurnace = function () {
     const fuelIcon = f.fuelT > 0 ? MC.anyFuelId() : 0;
     const outIcon = f.state && f.input > 0 ? MC.SMELTING[f.input] : 0;
     draw(input, f.input); draw(fuel, fuelIcon); draw(out, outIcon);
-    bar.style.width = (f.state ? Math.min(100, (f.itemT / 10) * 100) : 0) + "%";
+    bar.style.width = `${f.state ? Math.min(100, (f.itemT / 10) * 100) : 0}%`;
 };
 MC.anyFuelId = function () {
     const keys = Object.keys(MC.FUEL);
@@ -3792,7 +3800,7 @@ MC.frame = function (dt) {
             MC.updateSelectorBox(MC.gfx.view, MC.gfx.proj, eye, fwd);
         }
     } catch (e) {
-        if (!MC._frameErrShown) { MC._frameErrShown = true; console.error('[Minecraft Quest render]', e); MC.showErr("Render error: " + (e && e.message || e)); }
+        if (!MC._frameErrShown) { MC._frameErrShown = true; console.error('[Minecraft Quest render]', e); MC.showErr(`Render error: ${  e && e.message || e}`); }
     }
     // mouse rotate
     if (MC.input.locked && MC.state.running && MC.player && !MC.ui.panel) {
@@ -3910,7 +3918,7 @@ MC.openMinecraft = function () {
 };
 
 MC.boot = function () {
-    console.log("Minecraft Quest v" + MC.VERSION + " boot");
+    console.log(`Minecraft Quest v${  MC.VERSION} boot`);
     MC.injectCSS();
     MC.bindInput();
     // wire arcade integration
