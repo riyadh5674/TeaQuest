@@ -1,0 +1,18 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-hex-case": "lower",
+    "color-hex-length": "short",
+    "selector-class-pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
+    "custom-property-pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+    "selector-pseudo-class-no-unknown": [true, { "ignorePseudoClasses": ["global", "local"] }],
+    "property-no-unknown": [true, { "ignoreProperties": ["mask-image", "-webkit-mask-image"] }],
+    "at-rule-no-unknown": [true, { "ignoreAtRules": ["keyframes", "media", "supports", "font-face", "property"] }],
+    "declaration-block-no-duplicate-properties": [true, { "ignore": ["consecutive"] }],
+    "no-duplicate-selectors": true,
+    "color-no-invalid-hex": true,
+    "function-linear-gradient-no-nonstandard-direction": true,
+    "unit-case": "lower",
+    "selector-max-specificity": "0,3,0"
+  }
+}

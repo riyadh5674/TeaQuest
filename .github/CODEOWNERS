@@ -1,0 +1,34 @@
+# Code owners for TeaQuest
+# These users will be automatically requested for review on PRs
+
+# Global owners
+* @riyadh5674
+
+# Core application files
+/index.html @riyadh5674
+/style.css @riyadh5674
+/java.js @riyadh5674
+/fx.js @riyadh5674
+/arcade.js @riyadh5674
+/minecraft.js @riyadh5674
+/social.js @riyadh5674
+/tea_db.js @riyadh5674
+/security.js @riyadh5674
+/payment.js @riyadh5674
+
+# Configuration
+/package.json @riyadh5674
+/.eslintrc.json @riyadh5674
+/.prettierrc @riyadh5674
+/jest.config.js @riyadh5674
+/.stylelintrc.json @riyadh5674
+
+# CI/CD
+/.github/workflows/ @riyadh5674
+/.github/dependabot.yml @riyadh5674
+
+# Documentation
+/README.md @riyadh5674
+
+# Backend schema
+/supabase/schema.sql @riyadh5674

@@ -1,0 +1,145 @@
+/* =========================================================
+   STRIPE PAYMENT ELEMENTS
+========================================================= */
+
+.stripe-element-container {
+
+    border: 2px solid var(--border);
+
+    background: var(--panel);
+
+    border-radius: 4px;
+
+    min-height: 50px;
+
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.stripe-element-container.StripeElement--focus {
+
+    border-color: var(--green);
+
+    box-shadow: 0 0 0 2px rgba(117, 214, 107, 0.2);
+}
+
+.stripe-element-container.StripeElement--invalid {
+
+    border-color: var(--red);
+
+    box-shadow: 0 0 0 2px rgba(230, 106, 94, 0.2);
+}
+
+.stripe-error {
+
+    color: var(--red);
+
+    font-family: var(--font-pixel);
+
+    font-size: 7px;
+
+    margin-top: 8px;
+
+    min-height: 14px;
+}
+
+.checkout-modal {
+
+    max-width: 560px;
+}
+
+.checkout-modal label {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    margin-bottom: 18px;
+}
+
+.checkout-modal input,
+.checkout-modal textarea,
+.checkout-modal select {
+
+    border: 2px solid var(--border);
+
+    background: var(--panel);
+
+    color: var(--cream);
+
+    padding: 12px 14px;
+
+    font-family: var(--font-retro);
+
+    font-size: 19px;
+
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.checkout-modal input:focus,
+.checkout-modal textarea:focus,
+.checkout-modal select:focus {
+
+    border-color: var(--green);
+
+    outline: none;
+
+    box-shadow: 0 0 0 2px rgba(117, 214, 107, 0.2);
+}
+
+.checkout-modal label span {
+
+    font-family: var(--font-pixel);
+
+    font-size: 7px;
+
+    color: var(--green);
+
+    text-transform: uppercase;
+}
+
+.summary-items {
+
+    border-top: 1px solid var(--border);
+
+    border-bottom: 1px solid var(--border);
+
+    padding: 15px 0;
+
+    margin-bottom: 15px;
+}
+
+.summary-item {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-bottom: 8px;
+
+    font-size: 21px;
+}
+
+.summary-item:last-child {
+
+    margin-bottom: 0;
+}
+
+.summary-total {
+
+    text-align: right;
+
+    font-family: var(--font-pixel);
+
+    font-size: 13px;
+
+    color: var(--gold);
+}
+
+#stripe-submit:disabled {
+
+    opacity: 0.6;
+
+    cursor: not-allowed;
+}

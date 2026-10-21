@@ -1629,21 +1629,49 @@
 
         <div id="checkoutSummary"></div>
 
-        <form id="checkoutForm">
+        <form id="checkoutForm" data-stripe-payment>
 
             <label>
                 FULL NAME
-                <input id="checkoutName" required>
+                <input id="checkoutName" required autocomplete="name">
+            </label>
+
+            <label>
+                EMAIL
+                <input id="checkoutEmail" required type="email" autocomplete="email">
             </label>
 
             <label>
                 DELIVERY ADDRESS
-                <textarea id="checkoutAddress" required rows="3"></textarea>
+                <textarea id="checkoutAddress" required rows="3" autocomplete="street-address"></textarea>
+            </label>
+
+            <label>
+                CITY
+                <input id="checkoutCity" autocomplete="address-level2">
+            </label>
+
+            <label>
+                POSTAL CODE
+                <input id="checkoutPostalCode" autocomplete="postal-code">
+            </label>
+
+            <label>
+                COUNTRY
+                <select id="checkoutCountry" autocomplete="country">
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="GB">United Kingdom</option>
+                    <option value="AU">Australia</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="JP">Japan</option>
+                </select>
             </label>
 
             <label>
                 PHONE
-                <input id="checkoutPhone" required type="tel">
+                <input id="checkoutPhone" type="tel" autocomplete="tel">
             </label>
 
             <label>
@@ -1651,19 +1679,26 @@
 
                 <select id="checkoutPayment">
 
-                    <option value="cash">
-                        Cash on Delivery
+                    <option value="stripe">
+                        💳 Credit/Debit Card (Stripe)
                     </option>
 
-                    <option value="card">
-                        Card — Demo
+                    <option value="cash">
+                        💵 Cash on Delivery
+                    </option>
+
+                    <option value="demo">
+                        🎮 Demo Mode (No Charge)
                     </option>
 
                 </select>
 
             </label>
 
-            <button class="pixel-button primary full" type="submit">
+            <div id="stripe-card-element" class="stripe-element-container hidden-field"></div>
+            <div id="card-errors" class="stripe-error hidden-field" role="alert"></div>
+
+            <button class="pixel-button primary full" type="submit" id="stripe-submit">
                 PLACE ORDER ✦
             </button>
 
@@ -2129,6 +2164,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="security.js"></script>
 <script>
 window.FIREBASE_CONFIG = {
     apiKey: "",
@@ -2147,5 +2183,7 @@ window.FIREBASE_CONFIG = {
 <script src="arcade.js"></script>
 
 <script src="social.js"></script>
+
+<script src="payment.js"></script>
 </body>
 </html>

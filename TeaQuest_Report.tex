@@ -1,0 +1,657 @@
+% =========================================================
+%  TEAQUEST — PROJECT REPORT
+%  Compile with pdflatex (or upload to Overleaf)
+% =========================================================
+
+\documentclass[11pt,a4paper]{article}
+
+% ---------------------------------------------------------
+%  PACKAGES
+% ---------------------------------------------------------
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{hyperref}
+
+% ---------------------------------------------------------
+%  THEME COLORS (matching the TeaQuest palette)
+% ---------------------------------------------------------
+
+\definecolor{teagreen}{RGB}{117,214,107}
+\definecolor{teadark}{RGB}{17,29,23}
+\definecolor{teacream}{RGB}{244,230,189}
+\definecolor{teagold}{RGB}{245,201,93}
+\definecolor{codegreen}{RGB}{80,160,80}
+\definecolor{codegray}{RGB}{120,120,120}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=teadark,
+    urlcolor=teadark,
+    citecolor=teadark,
+    pdftitle={TeaQuest Project Report},
+    pdfauthor={TeaQuest Team}
+}
+
+% ---------------------------------------------------------
+%  LISTINGS STYLE
+% ---------------------------------------------------------
+
+\lstdefinestyle{codeStyle}{
+    backgroundcolor=\color{teadark!4},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{codegreen}\bfseries,
+    commentstyle=\color{codegray}\itshape,
+    stringstyle=\color{teadark},
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    numbersep=8pt,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{teadark!40},
+    framesep=6pt,
+    tabsize=4,
+    showstringspaces=false,
+    captionpos=b
+}
+
+\lstset{style=codeStyle}
+
+% ---------------------------------------------------------
+%  HEADINGS & HEADER/FOOTER
+% ---------------------------------------------------------
+
+\titleformat{\section}
+  {\Large\bfseries\color{teadark}}{\thesection}{0.8em}{}
+\titleformat{\subsection}
+  {\large\bfseries\color{teadark}}{\thesubsection}{0.8em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textsc{TeaQuest --- Project Report}}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------------------------------------------------------
+%  TITLE PAGE DATA
+% ---------------------------------------------------------
+
+\newcommand{\ReportTitle}{TEAQUEST}
+\newcommand{\ReportSubtitle}{Brew Your Adventure --- A Pixel-Art Fantasy E-Commerce Platform}
+\newcommand{\ReportAuthor}{[Your Name]}
+\newcommand{\ReportDate}{August 2026}
+
+\begin{document}
+
+% =========================================================
+%  TITLE PAGE
+% =========================================================
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\color{teagreen}\rule{\linewidth}{2pt}}\\[0.6cm]
+
+    {\Huge\bfseries\scshape \ReportTitle\par}
+    \vspace{0.5cm}
+    {\color{teagreen}\rule{12pt}{12pt}}%
+    {\color{teagold}\rule{12pt}{12pt}}%
+    {\color{teagreen}\rule{12pt}{12pt}}\par
+    \vspace{0.5cm}
+    {\Large\itshape \ReportSubtitle\par}
+
+    \vspace{0.5cm}
+    {\color{teagreen}\rule{\linewidth}{2pt}}\\[2cm]
+
+    {\large Project Technical Report\par}
+    \vspace{1.5cm}
+
+    \begin{tabular}{rl}
+        \textbf{Author}      & \ReportAuthor \\[4pt]
+        \textbf{Version}     & 1.0 \\[4pt]
+        \textbf{Date}        & \ReportDate \\[4pt]
+        \textbf{Live Demo}   & \url{https://riyadh5674.github.io/TeaQuest/} \\
+    \end{tabular}
+
+    \vfill
+    {\small\itshape ``Discover. Brew. Explore.''\par}
+    \vspace{1cm}
+\end{titlepage}
+
+% =========================================================
+%  ABSTRACT
+% =========================================================
+
+\begin{abstract}
+\noindent
+\textbf{TeaQuest} is a premium tea e-commerce web application wrapped in an
+original pixel-art fantasy theme. The project combines a complete shopping
+experience --- browsing, filtering, favorites, cart, checkout and order
+history --- with game-inspired mechanics such as experience points, quests,
+achievements, a discovery codex, a randomized ``Tea Roulette'' and a
+personality-based ``Tea Oracle'' recommender. The frontend is built entirely
+with vanilla HTML5, CSS3 and JavaScript, requiring no frameworks or build
+tools. Persistence uses a hybrid model: a local-first \texttt{localStorage}
+layer with a Supabase backend (PostgreSQL, authentication and row-level
+security) layered on top. This report documents the system architecture,
+frontend design, functional modules, database schema, security model and
+known limitations, and outlines the roadmap toward a production-ready
+platform.
+\end{abstract}
+
+\vspace{0.5cm}
+{\color{teadark!30}\hrule}
+\vspace{0.5cm}
+
+\tableofcontents
+\newpage
+
+% =========================================================
+%  1. INTRODUCTION
+% =========================================================
+
+\section{Introduction}
+
+Online tea shopping is functionally identical across most stores: a grid of
+products, a cart and a checkout form. \textbf{TeaQuest} challenges this
+convention by framing the entire purchase journey as a cozy role-playing
+game. Customers are ``players'', products are ``loot'', orders are
+``quests'', and the administrator is the ``Guild Master''. The goal is
+simple: \emph{make buying tea easy while making the experience memorable}.
+
+The project is implemented as a single-page application (SPA) with no
+frameworks, no package installation and no build step. Despite this
+deliberately minimal toolchain, it delivers features typically associated
+with much larger stacks: persistent user accounts, an admin dashboard with
+analytics, server-side authorization rules and structured cloud data.
+
+\subsection{Motivation}
+
+\begin{itemize}[nosep]
+    \item Demonstrate that strong gamification can coexist with serious
+          e-commerce usability.
+    \item Prove that a modern full-stack application can be delivered with
+          vanilla web technologies plus a Backend-as-a-Service provider.
+    \item Create an original visual identity that evokes retro games without
+          using any copyrighted assets.
+\end{itemize}
+
+\subsection{Scope}
+
+The current version covers the complete storefront, customer accounts, an
+administrative back office and a cloud database with enforced security
+policies. Payment processing is intentionally out of scope and simulated;
+real payments are planned for a future release.
+
+% =========================================================
+%  2. OBJECTIVES
+% =========================================================
+
+\section{Objectives}
+
+\begin{enumerate}[nosep]
+    \item Build a responsive storefront with search, category filtering,
+          sorting and product detail views.
+    \item Implement cart, favorites and a multi-step checkout flow with
+          order history.
+    \item Add a gamification layer: XP and levels, quests, achievements,
+          a discovery codex, Tea Roulette and the Tea Oracle quiz.
+    \item Provide customer registration/login with persistent profiles.
+    \item Provide an admin dashboard for products, orders, customers and
+          settings including JSON backup/restore.
+    \item Persist all state in \texttt{localStorage} with an optional
+          Supabase cloud backend protected by row-level security (RLS).
+    \item Keep the project dependency-free: no frameworks, no bundlers,
+          no npm install.
+\end{enumerate}
+
+% =========================================================
+%  3. TECHNOLOGY STACK
+% =========================================================
+
+\section{Technology Stack}
+
+\begin{table}[h!]
+\centering
+\caption{Technologies and libraries used.}
+\begin{tabular}{@{}p{4.2cm}p{4.2cm}p{6.2cm}@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} & \textbf{Purpose} \\
+\midrule
+Markup       & HTML5                  & Single-file SPA shell, semantic sections and modals \\
+Styling      & CSS3                   & Pixel-art theme, animations, responsive layout, theming via custom properties \\
+Logic        & Vanilla JavaScript (ES2020+) & Application engine, rendering, state management \\
+Persistence  & \texttt{localStorage}  & Offline-first data store for products, users, cart, favorites, orders \\
+Backend      & Supabase (PostgreSQL)  & Cloud database, authentication, row-level security \\
+Client SDK   & supabase-js v2 (CDN)   & Database and auth access from the browser \\
+Fonts        & Press Start 2P, VT323  & Retro pixel typography via Google Fonts \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No Node.js, npm or bundler is required; the site runs by opening
+\texttt{index.html} through any static server (e.g., VS Code Live Server).
+
+% =========================================================
+%  4. SYSTEM ARCHITECTURE
+% =========================================================
+
+\section{System Architecture}
+
+TeaQuest follows a \textbf{local-first, cloud-enhanced} architecture. All
+features work fully offline against \texttt{localStorage}; when the Supabase
+SDK is reachable, accounts and profiles are transparently synchronized to
+the cloud.
+
+\subsection{High-Level Overview}
+
+\begin{lstlisting}[caption={Layered architecture (simplified).},language={}]
++----------------------------------------------------------+
+|                      BROWSER (SPA)                        |
+|                                                          |
+|  index.html ..... pages, modals, drawers (static shell)   |
+|  java.js ........ application engine (~97 functions)      |
+|  style.css ...... pixel-art presentation layer            |
+|                                                          |
+|  State: products | users | cart | favorites | orders      |
+|         currentUser                                       |
++---------------------------+------------------------------+
+                            |  sync (profiles, auth)
+                            v
++----------------------------------------------------------+
+|                    SUPABASE (cloud)                       |
+|  Auth ......... email/password sessions                   |
+|  PostgreSQL ... profiles, products, orders,               |
+|                 order_items, favorites                    |
+|  RLS .......... policy-enforced authorization             |
++----------------------------------------------------------+
+\end{lstlisting}
+
+\subsection{State Management}
+
+Application state lives in module-level variables initialized from storage:
+
+\begin{itemize}[nosep]
+    \item \texttt{products}, \texttt{users}, \texttt{cart},
+          \texttt{favorites}, \texttt{orders}, \texttt{currentUser}
+    \item UI state: \texttt{activeCategory}, \texttt{authMode}
+\end{itemize}
+
+Every mutation follows the same pattern: \emph{modify state $\rightarrow$
+persist via \texttt{saveStorage()} $\rightarrow$ re-render affected views}.
+A single \texttt{renderEverything()} routine refreshes all major surfaces
+after bootstrapping.
+
+\subsection{Boot Sequence}
+
+On \texttt{DOMContentLoaded} the engine runs each feature initializer
+(navigation, theme, shop, cart, favorites, authentication, checkout,
+contact, admin, roulette, oracle), then restores the Supabase session via
+\texttt{restoreSession()} and performs the initial full render.
+
+% =========================================================
+%  5. FRONTEND DESIGN
+% =========================================================
+
+\section{Frontend Design and User Experience}
+
+\subsection{Visual Identity}
+
+The design language is an original \emph{cozy pixel fantasy}: deep forest
+greens, cream and gold accents, hard offset shadows that mimic chunky pixel
+borders, scanline atmosphere, drifting clouds, steam particles and a
+hand-built CSS tea house on the hero section. Two Google Fonts carry the
+identity: \textbf{Press Start 2P} for headings and \textbf{VT323} for body
+text.
+
+\subsection{Single-Page Navigation}
+
+All pages are \texttt{<section>} elements toggled through a hash-aware
+router (\texttt{showPage()}), keeping browser back/forward functional
+without a framework. Pages: \textbf{Home, Shop, Codex, Lore, Contact,
+Profile, Admin}. Overlays include the cart drawer, favorites drawer and
+seven modals (auth, product details, checkout, admin product editor,
+roulette, oracle, order details).
+
+\subsection{Accessibility and Motion}
+
+\begin{itemize}[nosep]
+    \item Visible focus outlines (\texttt{:focus-visible}) on all
+          interactive elements.
+    \item Full \texttt{prefers-reduced-motion} support disabling
+          animations and smooth scrolling.
+    \item Responsive layout with a dedicated mobile navigation drawer.
+\end{itemize}
+
+\subsection{Theming}
+
+A light/dark ``world'' toggle swaps CSS custom properties at runtime and
+persists the choice, letting players switch between day and night realms.
+
+% =========================================================
+%  6. FUNCTIONAL MODULES
+% =========================================================
+
+\section{Functional Modules}
+
+\subsection{E-Commerce Engine}
+
+\begin{itemize}[nosep]
+    \item \textbf{Catalog}: eight seeded teas across four categories
+          (green, black, herbal, special) with rarity tiers from
+          \emph{common} to \emph{legendary}.
+    \item \textbf{Discovery}: live text search, category filters and
+          sorting (featured, price ascending/descending, rating).
+    \item \textbf{Cart}: quantity management, stale-item pruning against
+          the current catalog, running total and slide-in drawer.
+    \item \textbf{Favorites}: heart-toggle per product with a dedicated
+          drawer and badge counter.
+    \item \textbf{Checkout}: summary review, delivery details form,
+          payment method selection (cash on delivery or demo card) and
+          order placement.
+    \item \textbf{Order history}: per-customer quest history with status
+          tracking.
+\end{itemize}
+
+\subsection{Gamification Layer}
+
+\begin{table}[h!]
+\centering
+\caption{Game systems and their triggers.}
+\begin{tabular}{@{}p{3.4cm}p{5.6cm}p{5.6cm}@{}}
+\toprule
+\textbf{System} & \textbf{Description} & \textbf{Progress Source} \\
+\midrule
+XP \& Levels    & Points awarded for discoveries and actions; animated level-up overlay & \texttt{user.xp} \\
+Quests (5)      & Goals such as FIRST BREW, RELIC HUNTER, LUCKY LEAF & Discoveries, spins, completed orders \\
+Achievements (6)& Permanent badges, e.g.\ TEA MASTER (Level 10), CODEX KEEPER (all teas) & Profile milestones \\
+Tea Codex       & Collection log recording every discovered tea forever & \texttt{user.discoveries} \\
+Tea Roulette    & Slot-machine style random tea picker with spin counter & \texttt{roulette\_spins} \\
+Tea Oracle      & Mood/flavor/strength quiz returning a matched brew & Product metadata matching \\
+Easter Egg      & Konami code unlocks a secret hue-shifted realm & Keyboard sequence listener \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Authentication and Profiles}
+
+Accounts use Supabase email/password auth. On first login a profile row is
+auto-created (database trigger) and mapped into the app shape
+(\texttt{mapProfile}). XP, discoveries, achievements and roulette spins are
+written back to the cloud on every change via \texttt{syncProfile()}. If
+Supabase is unavailable the app degrades gracefully to local-only mode.
+
+For the offline fallback path, passwords are hashed with SHA-256
+(Web Crypto) using a static application salt, with an FNV-1a fallback for
+environments without \texttt{crypto.subtle}.
+
+\subsection{Admin Dashboard (``Guild Master Mode'')}
+
+\begin{itemize}[nosep]
+    \item \textbf{Overview}: revenue, order, player and product counters;
+          a seven-day revenue chart; recent-order feed.
+    \item \textbf{Products}: searchable table with create/edit/delete via
+          a modal editor.
+    \item \textbf{Orders}: status filters (PROCESSING, SHIPPED, DELIVERED,
+          CANCELLED), inline status updates, detail view and deletion.
+    \item \textbf{Customers}: player list with level, order count, role
+          toggle and removal.
+    \item \textbf{Settings}: password change, JSON export/import backup and
+          a full factory reset.
+\end{itemize}
+
+% =========================================================
+%  7. DATABASE DESIGN
+% =========================================================
+
+\section{Database Design (Supabase)}
+
+The schema (\texttt{supabase/schema.sql}) defines five tables. Products use
+readable text identifiers (\texttt{tea-001} \ldots \texttt{tea-008})
+matching the frontend seed data exactly.
+
+\begin{table}[h!]
+\centering
+\caption{Database tables.}
+\begin{tabular}{@{}p{3.2cm}p{4.6cm}p{6.8cm}@{}}
+\toprule
+\textbf{Table} & \textbf{Key Columns} & \textbf{Notes} \\
+\midrule
+\texttt{profiles}     & id (FK auth.users), name, email, role, xp, discoveries, achievements, roulette\_spins & One row per player; \texttt{role} restricted to \emph{player}/\emph{admin} \\
+\texttt{products}     & id (text PK), name, category, price, icon, rating, rarity, origin, flavor\_notes, moods, flavor\_profile, strength, stock & Seeded with the eight launch teas; idempotent seed \\
+\texttt{orders}       & id (uuid PK), user\_id FK, customer, address, phone, payment, total, status & Status constrained to four workflow states \\
+\texttt{order\_items} & order\_id FK, product\_id FK, name, price, quantity & Line items cascade with their order \\
+\texttt{favorites}    & (user\_id, product\_id) composite PK & Private per-player saved loot \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Automation Triggers}
+
+\begin{itemize}[nosep]
+    \item \texttt{on\_auth\_user\_created} --- inserts a \texttt{profiles}
+          row whenever a user signs up, deriving the display name from
+          metadata or the email prefix.
+    \item \texttt{protect\_profile\_role} --- blocks non-admins from
+          changing \texttt{profiles.role}, preventing privilege
+          escalation through the public API.
+\end{itemize}
+
+\subsection{Representative Policy Excerpt}
+
+\begin{lstlisting}[language=SQL,caption={Row-level security: products are world-readable, admin-writable.}]
+create policy "products_select"
+    on public.products for select
+    using (true);
+
+create policy "products_insert"
+    on public.products for insert
+    with check (public.is_admin ());
+\end{lstlisting}
+
+% =========================================================
+%  8. SECURITY MODEL
+% =========================================================
+
+\section{Security Model}
+
+\subsection{Server-Side Authorization}
+
+Authorization is enforced \emph{inside the database}, not in JavaScript.
+Every table enables RLS; a \texttt{security definer} helper
+(\texttt{is\_admin()}) resolves the caller's role without exposing the
+profiles table to enumeration.
+
+\begin{itemize}[nosep]
+    \item Players read/update only their own profile; admins see all.
+    \item Orders are visible and creatable only by their owner; status
+          transitions are additionally manageable by admins.
+    \item Order items inherit visibility from the parent order.
+    \item Favorites are strictly private per user.
+    \item Role changes require admin privileges (trigger-enforced).
+\end{itemize}
+
+\subsection{Known Findings and Recommendations}
+
+\begin{enumerate}[nosep]
+    \item \textbf{Client-side admin credential.} A fallback admin password
+          is embedded in \texttt{java.js}. Although real authorization is
+          enforced by RLS, the constant should be removed so no usable
+          credential ships in public source.
+    \item \textbf{Legacy demo account.} The offline \texttt{defaultUsers}
+          seed still contains a plaintext demo password; it should be
+          dropped now that Supabase auth is primary.
+    \item \textbf{Static hashing salt.} The local-fallback hash uses one
+          fixed salt; acceptable for a demo path, but the long-term answer
+          is Supabase-managed auth exclusively.
+    \item \textbf{Documentation drift.} The README still describes the
+          pre-backend prototype; it should be updated to reflect the
+          Supabase integration.
+\end{enumerate}
+
+% =========================================================
+%  9. PROJECT METRICS
+% =========================================================
+
+\section{Project Metrics}
+
+\begin{table}[h!]
+\centering
+\caption{Codebase statistics (current working tree).}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{File} & \textbf{Lines} & \textbf{Size (KB)} & \textbf{Role} \\
+\midrule
+index.html            & 1{,}609 & $\approx$62  & SPA shell, 7 pages, 8 overlays \\
+style.css             & 5{,}142 & $\approx$69  & Theme, animation, responsiveness \\
+java.js               & 5{,}803 & $\approx$107 & Engine, $\sim$97 functions \\
+supabase/schema.sql   & 371     & $\approx$10  & Tables, RLS, triggers, seed \\
+\midrule
+\textbf{Total}        & \textbf{12{,}925} & $\approx$\textbf{248} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Seeded Product Catalog}
+
+\begin{table}[h!]
+\centering
+\caption{Launch lineup (eight teas).}
+\begin{tabular}{@{}llllr l@{}}
+\toprule
+\textbf{ID} & \textbf{Name} & \textbf{Category} & \textbf{Rarity} & \textbf{Price} & \textbf{Rating} \\
+\midrule
+tea-001 & Forest Mint    & green   & common    & \$12 & 4.9 \\
+tea-002 & Dragon Ember   & black   & uncommon  & \$15 & 4.8 \\
+tea-003 & Moon Blossom   & herbal  & uncommon  & \$14 & 5.0 \\
+tea-004 & Emerald Mist   & green   & rare      & \$18 & 4.9 \\
+tea-005 & Sunset Chai    & special & rare      & \$17 & 4.7 \\
+tea-006 & Wizard's Berry & herbal  & rare      & \$16 & 4.8 \\
+tea-007 & Iron Leaf      & black   & epic      & \$19 & 4.6 \\
+tea-008 & Golden Phoenix & special & legendary & \$25 & 5.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =========================================================
+%  10. DEPLOYMENT & RUNNING
+% =========================================================
+
+\section{Deployment and Local Development}
+
+\begin{enumerate}[nosep]
+    \item Clone the repository; no dependencies to install.
+    \item Open the folder in VS Code and launch \texttt{index.html} with
+          the Live Server extension.
+    \item For cloud features: create a Supabase project, run
+          \texttt{schema.sql} in the SQL Editor, then promote your account
+          with
+          \texttt{update public.profiles set role = 'admin' where
+          email = '<your-email>';}
+    \item The production build is a static deploy (currently GitHub
+          Pages).
+\end{enumerate}
+
+% =========================================================
+%  11. LIMITATIONS
+% =========================================================
+
+\section{Current Limitations}
+
+\begin{itemize}[nosep]
+    \item Payments are simulated; no payment gateway is integrated.
+    \item No automated test suite; verification is manual.
+    \item Single-file JavaScript engine ($\sim$5.8k lines) is monolithic;
+          ES modules would improve maintainability.
+    \item Analytics derive from local/cloud order data only --- no event
+          tracking.
+    \item Images/icons are emoji-based placeholders rather than authored
+          pixel art assets.
+\end{itemize}
+
+% =========================================================
+%  12. FUTURE WORK
+% =========================================================
+
+\section{Future Work}
+
+\begin{itemize}[nosep]
+    \item Real payment processing (Stripe or similar).
+    \item Expanded XP and achievement system with seasonal events.
+    \item Interactive tea-world map unlocking region-based blends.
+    \item Refactor into ES modules with a lightweight component pattern.
+    \item Automated end-to-end tests for checkout and admin flows.
+    \item Order confirmation emails via Supabase Edge Functions.
+\end{itemize}
+
+% =========================================================
+%  13. CONCLUSION
+% =========================================================
+
+\section{Conclusion}
+
+TeaQuest demonstrates that personality and engineering rigor can share the
+same codebase. In under thirteen thousand lines of dependency-free code it
+delivers a complete storefront, a genuine gamification loop, a governed
+cloud database and an administrative back office. The architecture's
+local-first design keeps the site instant and resilient, while Supabase
+row-level security provides defense-in-depth that does not depend on client
+code. With payments, modularization and testing on the roadmap, TeaQuest is
+well positioned to grow from a polished prototype into a production tea
+destination.
+
+\vspace{0.5cm}
+\begin{center}
+    {\color{teagreen}\rule{0.5\linewidth}{1pt}}\\[6pt]
+    \textit{Discover. Brew. Explore.}\\[4pt]
+    {\color{teagreen}\rule{6pt}{6pt}}\;
+    \textbf{TEAQUEST} --- All pixels reserved.
+\end{center}
+
+% =========================================================
+%  APPENDIX
+% =========================================================
+
+\appendix
+
+\section{localStorage Keys}
+
+\begin{table}[h!]
+\centering
+\caption{Offline persistence contract.}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Key} & \textbf{Type} & \textbf{Contents} \\
+\midrule
+\texttt{teaquest\_products}    & array  & Product catalog \\
+\texttt{teaquest\_users}       & array  & Offline fallback accounts \\
+\texttt{teaquest\_cart}        & array  & Cart line items \\
+\texttt{teaquest\_favorites}   & array  & Favorited product ids \\
+\texttt{teaquest\_orders}      & array  & Placed orders \\
+\texttt{teaquest\_currentUser} & object & Active session profile \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Order Status Workflow}
+
+\begin{lstlisting}[language={},caption={Allowed transitions managed from the admin dashboard.}]
+PROCESSING --> SHIPPED --> DELIVERED
+     |
+     +------> CANCELLED
+\end{lstlisting}
+
+\end{document}

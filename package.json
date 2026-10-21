@@ -1,0 +1,45 @@
+{
+  "name": "teaquest",
+  "version": "1.0.0",
+  "description": "TeaQuest - Premium tea e-commerce in a pixel fantasy world",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint *.js",
+    "lint:fix": "eslint *.js --fix",
+    "format": "prettier --write \"**/*.{js,html,css,json,md}\"",
+    "validate": "npm run lint && npm run test",
+    "build": "node scripts/build.js",
+    "dev": "npx serve . -p 3000",
+    "prepare": "husky install"
+  },
+  "keywords": ["tea", "ecommerce", "game", "pixel-art", "webgl"],
+  "author": "riyadh5674",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "husky": "^9.0.11",
+    "serve": "^14.2.1",
+    "@babel/core": "^7.23.9",
+    "@babel/preset-env": "^7.23.9",
+    "htmlhint": "^1.1.4",
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0",
+    "terser": "^5.27.0",
+    "clean-css": "^5.3.3",
+    "html-minifier-terser": "^7.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
