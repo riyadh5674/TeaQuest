@@ -1,0 +1,15 @@
+const name =
+        $("#authName")
+            .value
+            .trim();
+
+
+    if (!name) {
+
+        toast(
+            "CHARACTER ERROR",
+            "Enter your player name."
+        );
+
+        return;
+    }

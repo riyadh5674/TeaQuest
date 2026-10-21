@@ -402,7 +402,23 @@ function mapProfile(row) {
                 ? row.high_scores
                 : {},
         arcadePlays:
-            Number(row.arcade_plays || 0)
+            Number(row.arcade_plays || 0),
+        // Extended profile fields
+        firstName: row.first_name || "",
+        lastName: row.last_name || "",
+        phone: row.phone || "",
+        dateOfBirth: row.date_of_birth || "",
+        gender: row.gender || "",
+        addressLine1: row.address_line1 || "",
+        addressLine2: row.address_line2 || "",
+        city: row.city || "",
+        stateProvince: row.state_province || "",
+        postalCode: row.postal_code || "",
+        country: row.country || "US",
+        newsletterOptIn: row.newsletter_opt_in || false,
+        smsOptIn: row.sms_opt_in || false,
+        marketingOptIn: row.marketing_opt_in || false,
+        emailVerified: row.email_verified || false
     };
 
 }
@@ -1001,9 +1017,9 @@ async function ensureProfile(authUser) {
     }
 
 
+    const metadata = authUser.user_metadata || {};
     const fallbackName =
-        (authUser.user_metadata &&
-            authUser.user_metadata.name) ||
+        metadata.name ||
         (authUser.email || "player")
             .split("@")[0];
 
@@ -1026,6 +1042,20 @@ async function ensureProfile(authUser) {
                 id: authUser.id,
                 email: authUser.email || "",
                 name: fallbackName,
+                first_name: metadata.first_name || "",
+                last_name: metadata.last_name || "",
+                phone: metadata.phone || "",
+                date_of_birth: metadata.date_of_birth || "",
+                gender: metadata.gender || "",
+                address_line1: metadata.address_line1 || "",
+                address_line2: metadata.address_line2 || "",
+                city: metadata.city || "",
+                state_province: metadata.state_province || "",
+                postal_code: metadata.postal_code || "",
+                country: metadata.country || "US",
+                newsletter_opt_in: metadata.newsletter_opt_in || false,
+                sms_opt_in: metadata.sms_opt_in || false,
+                marketing_opt_in: metadata.marketing_opt_in || false,
                 role: isFirstAccount
                     ? "admin"
                     : "player"
@@ -1090,7 +1120,22 @@ function syncProfile() {
             achievements: currentUser.achievements,
             roulette_spins: currentUser.rouletteSpins,
             high_scores: currentUser.highScores || {},
-            arcade_plays: currentUser.arcadePlays || 0
+            arcade_plays: currentUser.arcadePlays || 0,
+            // Extended profile fields
+            first_name: currentUser.firstName || "",
+            last_name: currentUser.lastName || "",
+            phone: currentUser.phone || "",
+            date_of_birth: currentUser.dateOfBirth || "",
+            gender: currentUser.gender || "",
+            address_line1: currentUser.addressLine1 || "",
+            address_line2: currentUser.addressLine2 || "",
+            city: currentUser.city || "",
+            state_province: currentUser.stateProvince || "",
+            postal_code: currentUser.postalCode || "",
+            country: currentUser.country || "US",
+            newsletter_opt_in: currentUser.newsletterOptIn || false,
+            sms_opt_in: currentUser.smsOptIn || false,
+            marketing_opt_in: currentUser.marketingOptIn || false
         })
         .eq("id", currentUser.id)
         .then(({ error }) => {
@@ -2885,9 +2930,9 @@ function setAuthMode(mode) {
         admin
             ? "Enter your master credentials to open the command center."
             : signup
-                ? "Create your player account."
+                ? "Fill in your details to create your brewer profile."
                 : forgot
-                    ? "Enter your account email and we will send a 6-digit reset code."
+                    ? "Enter your account email and we will send a reset link."
                     : reset
                         ? `Enter the code sent to ${$("#authEmail")?.value.trim() || "your email"} plus a new password.`
                         : "Login to continue your tea quest.";
@@ -2899,7 +2944,7 @@ function setAuthMode(mode) {
             : signup
                 ? "CREATE ACCOUNT"
                 : forgot
-                    ? "SEND RESET CODE"
+                    ? "SEND RESET LINK"
                     : reset
                         ? "RESET PASSWORD"
                         : "ENTER WORLD";
@@ -2937,10 +2982,17 @@ function setAuthMode(mode) {
         );
 
 
-    $("#signupNameGroup")
+    // Toggle signup vs login fields
+    $("#signupFields")
         ?.classList.toggle(
             "hidden-field",
             !signup
+        );
+
+    $("#loginFields")
+        ?.classList.toggle(
+            "hidden-field",
+            signup || forgot || reset || admin
         );
 
 
@@ -3004,6 +3056,20 @@ function setAuthMode(mode) {
 
     if ($("#authName")) $("#authName").required =
         signup;
+    if ($("#authFirstName")) $("#authFirstName").required =
+        signup;
+    if ($("#authLastName")) $("#authLastName").required =
+        signup;
+    if ($("#authEmail")) $("#authEmail").required =
+        signup || mode === "login" || forgot;
+    if ($("#authPhone")) $("#authPhone").required = false;
+    if ($("#authDOB")) $("#authDOB").required = false;
+    if ($("#authGender")) $("#authGender").required = false;
+    if ($("#authAddress1")) $("#authAddress1").required = false;
+    if ($("#authCity")) $("#authCity").required = false;
+    if ($("#authState")) $("#authState").required = false;
+    if ($("#authPostalCode")) $("#authPostalCode").required = false;
+    if ($("#authCountry")) $("#authCountry").required = false;
 
 
     if (mode === "login" || mode === "forgot") {
@@ -3466,22 +3532,157 @@ async function handleAuthentication(event) {
     }
 
 
+    // ============ SIGNUP ============
+
+    const firstName =
+        $("#authFirstName")
+            ?.value
+            .trim();
+
+    const lastName =
+        $("#authLastName")
+            ?.value
+            .trim();
+
     const name =
         $("#authName")
             .value
             .trim();
 
+    const phone =
+        $("#authPhone")
+            ?.value
+            .trim();
 
-    if (!name) {
+    const dob =
+        $("#authDOB")
+            ?.value;
+
+    const gender =
+        $("#authGender")
+            ?.value;
+
+    const address1 =
+        $("#authAddress1")
+            ?.value
+            .trim();
+
+    const address2 =
+        $("#authAddress2")
+            ?.value
+            .trim();
+
+    const city =
+        $("#authCity")
+            ?.value
+            .trim();
+
+    const state =
+        $("#authState")
+            ?.value
+            .trim();
+
+    const postalCode =
+        $("#authPostalCode")
+            ?.value
+            .trim();
+
+    const country =
+        $("#authCountry")
+            ?.value;
+
+    const newsletterOptIn =
+        $("#authNewsletter")
+            ?.checked;
+
+    const smsOptIn =
+        $("#authSMS")
+            ?.checked;
+
+    const marketingOptIn =
+        $("#authMarketing")
+            ?.checked;
+
+
+    if (!firstName) {
 
         toast(
             "CHARACTER ERROR",
-            "Enter your player name."
+            "Enter your first name."
         );
 
         return;
     }
 
+    if (!lastName) {
+
+        toast(
+            "CHARACTER ERROR",
+            "Enter your last name."
+        );
+
+        return;
+    }
+
+    if (!name) {
+
+        toast(
+            "CHARACTER ERROR",
+            "Enter your display name."
+        );
+
+        return;
+    }
+
+    if (!email) {
+
+        toast(
+            "CHARACTER ERROR",
+            "Enter your email."
+        );
+
+        return;
+    }
+
+    if (password.length < 6) {
+
+        toast(
+            "CHARACTER ERROR",
+            "Password must be at least 6 characters."
+        );
+
+        return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+
+        toast(
+            "CHARACTER ERROR",
+            "Enter a valid email address."
+        );
+
+        return;
+    }
+
+    // Validate DOB if provided (must be 13+)
+    if (dob) {
+        const birthDate = new Date(dob);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        if (age < 13) {
+            toast(
+                "CHARACTER ERROR",
+                "You must be at least 13 years old to register."
+            );
+            return;
+        }
+    }
 
     if (!db) {
 
@@ -3499,7 +3700,23 @@ async function handleAuthentication(event) {
             email,
             password,
             options: {
-                data: { name }
+                data: {
+                    name,
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone,
+                    date_of_birth: dob,
+                    gender,
+                    address_line1: address1,
+                    address_line2: address2,
+                    city,
+                    state_province: state,
+                    postal_code: postalCode,
+                    country,
+                    newsletter_opt_in: newsletterOptIn,
+                    sms_opt_in: smsOptIn,
+                    marketing_opt_in: marketingOptIn
+                }
             }
         });
 
@@ -3513,7 +3730,6 @@ async function handleAuthentication(event) {
         );
 
         return;
-
     }
 
 
@@ -3530,7 +3746,6 @@ async function handleAuthentication(event) {
         );
 
         return;
-
     }
 
 
@@ -3588,7 +3803,7 @@ async function handleAuthentication(event) {
 
     navigateTo("shop");
 
-}
+}}
 
 
 async function logout() {

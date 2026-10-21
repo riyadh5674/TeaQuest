@@ -19,6 +19,27 @@ create table public.profiles (
     role text not null default 'player'
         check (role in ('player', 'admin')),
 
+    -- Extended profile fields for e-commerce
+    first_name text,
+    last_name text,
+    phone text,
+    date_of_birth date,
+    gender text check (gender in ('male', 'female', 'other', 'prefer_not_to_say')),
+    
+    -- Address fields
+    address_line1 text,
+    address_line2 text,
+    city text,
+    state_province text,
+    postal_code text,
+    country text default 'US',
+    
+    -- Preferences
+    newsletter_opt_in boolean default false,
+    sms_opt_in boolean default false,
+    marketing_opt_in boolean default false,
+    
+    -- Game stats
     xp integer not null default 0,
 
     discoveries jsonb not null default '[]',
@@ -31,9 +52,37 @@ create table public.profiles (
 
     arcade_plays integer not null default 0,
 
-    created_at timestamptz not null default now()
+    -- Timestamps
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
 
+    -- Email verification
+    email_verified boolean default false,
+    email_verification_token text,
+    email_verification_sent_at timestamptz
 );
+
+
+-- ---------------------------------------------------------
+-- 1b. TRIGGER — auto-update updated_at timestamp
+-- ---------------------------------------------------------
+
+create function public.set_updated_at()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$;
+
+create trigger profiles_updated_at
+    before update on public.profiles
+    for each row
+    execute function public.set_updated_at();
 
 
 -- ---------------------------------------------------------
@@ -302,14 +351,46 @@ security definer
 set search_path = public
 as $$
 begin
-    insert into public.profiles (id, email, name)
+    insert into public.profiles (
+        id, 
+        email, 
+        name,
+        first_name,
+        last_name,
+        phone,
+        date_of_birth,
+        gender,
+        address_line1,
+        address_line2,
+        city,
+        state_province,
+        postal_code,
+        country,
+        newsletter_opt_in,
+        sms_opt_in,
+        marketing_opt_in
+    )
     values (
         new.id,
         new.email,
         coalesce (
             new.raw_user_meta_data ->> 'name',
             split_part (new.email, '@', 1)
-        )
+        ),
+        new.raw_user_meta_data ->> 'first_name',
+        new.raw_user_meta_data ->> 'last_name',
+        new.raw_user_meta_data ->> 'phone',
+        (new.raw_user_meta_data ->> 'date_of_birth')::date,
+        new.raw_user_meta_data ->> 'gender',
+        new.raw_user_meta_data ->> 'address_line1',
+        new.raw_user_meta_data ->> 'address_line2',
+        new.raw_user_meta_data ->> 'city',
+        new.raw_user_meta_data ->> 'state_province',
+        new.raw_user_meta_data ->> 'postal_code',
+        coalesce(new.raw_user_meta_data ->> 'country', 'US'),
+        (new.raw_user_meta_data ->> 'newsletter_opt_in')::boolean,
+        (new.raw_user_meta_data ->> 'sms_opt_in')::boolean,
+        (new.raw_user_meta_data ->> 'marketing_opt_in')::boolean
     );
     return new;
 end;
@@ -380,7 +461,7 @@ on conflict (id) do nothing;
 
 create view public.player_directory as
 
-    select id, name, xp, high_scores, arcade_plays
+    select id, name, xp, high_scores, arcade_plays, avatar_url, first_name, last_name
 
     from public.profiles;
 
@@ -618,7 +699,7 @@ alter table public.profiles
 create or replace view public.player_directory as
 
     select id, name, xp, high_scores,
-           arcade_plays, avatar_url
+           arcade_plays, avatar_url, first_name, last_name
 
     from public.profiles;
 
