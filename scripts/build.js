@@ -7,6 +7,10 @@
  * - Copies assets
  * - Generates service worker for offline support
  * - Injects Firebase config from environment variables
+ *
+ * The list of scripts is derived from index.html so a new script can
+ * never be forgotten here again (that previously left utils.js,
+ * security.js and payment.js out of the build).
  */
 
 const fs = require('fs');
@@ -30,26 +34,53 @@ async function build() {
   }
   fs.mkdirSync(DIST_DIR, { recursive: true });
 
+  // Work out which local scripts the app actually loads.
+  const jsFiles = collectLocalScripts();
+
   // Copy static assets
   await copyAssets();
 
   // Build HTML with injected config
-  await buildHtml();
+  await buildHtml(jsFiles);
 
   // Build and minify CSS
   await buildCss();
 
   // Build and minify JavaScript
-  await buildJs();
+  await buildJs(jsFiles);
 
   // Generate service worker
-  await generateServiceWorker();
+  await generateServiceWorker(jsFiles);
 
   // Generate manifest
   await generateManifest();
 
   console.log('✅ Build completed successfully!');
   console.log(`📦 Output ready in: ${DIST_DIR}`);
+}
+
+/**
+ * Read index.html and return every local <script src="*.js"> file.
+ * Remote scripts (Firebase SDK, Stripe) are ignored.
+ */
+function collectLocalScripts() {
+  const html = fs.readFileSync(path.join(SRC_DIR, 'index.html'), 'utf8');
+
+  const pattern = /<script\s+src="([^"]+\.js)"><\/script>/g;
+  const found = [];
+  let match;
+
+  while ((match = pattern.exec(html)) !== null) {
+    const src = match[1];
+
+    if (/^(https?:)?\/\//.test(src)) continue;
+    if (!fs.existsSync(path.join(SRC_DIR, src))) continue;
+    if (found.includes(src)) continue;
+
+    found.push(src);
+  }
+
+  return found;
 }
 
 async function copyAssets() {
@@ -89,12 +120,11 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
-async function buildHtml() {
+async function buildHtml(jsFiles) {
   console.log('📄 Building HTML...');
 
   let html = fs.readFileSync(path.join(SRC_DIR, 'index.html'), 'utf8');
 
-  // Inject Firebase config from environment
   const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY || 'YOUR_API_KEY',
     authDomain: process.env.FIREBASE_AUTH_DOMAIN || 'your-project.firebaseapp.com',
@@ -104,23 +134,37 @@ async function buildHtml() {
     appId: process.env.FIREBASE_APP_ID || '1:123456789:web:abcdef'
   };
 
-  // Replace the Firebase config placeholder
-  const configScript = `
-    <script>
-      window.FIREBASE_CONFIG = ${JSON.stringify(firebaseConfig, null, 2)};
-    </script>
-  `;
+  // ---------------------------------------------------------------
+  // Replace the EXISTING window.FIREBASE_CONFIG block.
+  //
+  // Injecting a second <script> before </head> did not work: the
+  // original empty config in the body ran afterwards and overwrote
+  // the injected values with empty strings, so the production build
+  // always started in "BACKEND OFFLINE" mode.
+  // ---------------------------------------------------------------
+  const configPattern =
+    /window\.FIREBASE_CONFIG\s*=\s*\{[\s\S]*?\};/;
 
-  // Insert before the first script tag or at end of head
-  html = html.replace('</head>', `${configScript}\n  </head>`);
+  const configScript =
+    `window.FIREBASE_CONFIG = ${JSON.stringify(firebaseConfig, null, 2)};`;
 
-  // Update script references to point to minified versions
-  html = html.replace('src="tea_db.js"', 'src="tea_db.min.js"');
-  html = html.replace('src="fx.js"', 'src="fx.min.js"');
-  html = html.replace('src="java.js"', 'src="java.min.js"');
-  html = html.replace('src="arcade.js"', 'src="arcade.min.js"');
-  html = html.replace('src="minecraft.js"', 'src="minecraft.min.js"');
-  html = html.replace('src="social.js"', 'src="social.min.js"');
+  if (configPattern.test(html)) {
+    html = html.replace(configPattern, configScript);
+    console.log('  ✓ Firebase config injected from environment');
+  } else {
+    html = html.replace(
+      '</head>',
+      `  <script>\n    ${configScript}\n  </script>\n  </head>`
+    );
+    console.log('  ✓ Firebase config injected (new block)');
+  }
+
+  // Point every local script at its minified twin.
+  for (const file of jsFiles) {
+    const minName = file.replace(/\.js$/, '.min.js');
+    html = html.replace(`src="${file}"`, `src="${minName}"`);
+  }
+
   html = html.replace('href="style.css"', 'href="style.min.css"');
 
   // Add production meta tags
@@ -166,14 +210,12 @@ async function buildCss() {
   console.log('  ✓ style.min.css');
 }
 
-async function buildJs() {
+async function buildJs(jsFiles) {
   console.log('⚙️  Building JavaScript...');
-
-  const jsFiles = ['tea_db.js', 'fx.js', 'java.js', 'arcade.js', 'minecraft.js', 'social.js'];
 
   for (const file of jsFiles) {
     const srcPath = path.join(SRC_DIR, file);
-    const destPath = path.join(DIST_DIR, file.replace('.js', '.min.js'));
+    const destPath = path.join(DIST_DIR, file.replace(/\.js$/, '.min.js'));
 
     if (!fs.existsSync(srcPath)) {
       console.log(`  ⚠️  ${file} not found, skipping`);
@@ -203,7 +245,7 @@ async function buildJs() {
       });
 
       fs.writeFileSync(destPath, result.code);
-      console.log(`  ✓ ${file.replace('.js', '.min.js')} (${(result.code.length / 1024).toFixed(1)} KB)`);
+      console.log(`  ✓ ${file.replace(/\.js$/, '.min.js')} (${(result.code.length / 1024).toFixed(1)} KB)`);
     } catch (error) {
       console.error(`  ❌ Failed to minify ${file}:`, error.message);
       // Fallback: copy original
@@ -212,8 +254,17 @@ async function buildJs() {
   }
 }
 
-async function generateServiceWorker() {
+async function generateServiceWorker(jsFiles) {
   console.log('🔧 Generating Service Worker...');
+
+  const staticAssets = [
+    '/',
+    '/index.html',
+    '/style.min.css',
+    ...jsFiles.map(file => '/' + file.replace(/\.js$/, '.min.js')),
+    '/icons/pixel-house.png',
+    '/manifest.json'
+  ];
 
   const swCode = `/**
  * TeaQuest Service Worker
@@ -225,19 +276,7 @@ const STATIC_CACHE = 'teaquest-static-v1';
 const DYNAMIC_CACHE = 'teaquest-dynamic-v1';
 
 // Assets to cache on install
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/style.min.css',
-  '/tea_db.min.js',
-  '/fx.min.js',
-  '/java.min.js',
-  '/arcade.min.js',
-  '/minecraft.min.js',
-  '/social.min.js',
-  '/icons/pixel-house.png',
-  '/manifest.json'
-];
+const STATIC_ASSETS = ${JSON.stringify(staticAssets, null, 2)};
 
 // Install event - cache static assets
 self.addEventListener('install', event => {
@@ -417,14 +456,12 @@ async function generateManifest() {
       {
         src: '/screenshots/home.png',
         sizes: '1280x720',
-        type: 'image/png',
         form_factor: 'wide',
         label: 'TeaQuest Home Page'
       },
       {
         src: '/screenshots/shop.png',
         sizes: '1280x720',
-        type: 'image/png',
         form_factor: 'wide',
         label: 'TeaQuest Shop'
       }
