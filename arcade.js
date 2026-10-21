@@ -406,8 +406,8 @@ function resetBrewGame(idleMode) {
 
     $("#brewButton")?.classList.remove("hidden-field");
 
-    if ($("#brewHint")) $("#brewHint").textContent =
-        "Press SPACE or tap BREW when the needle is in the green zone.";
+    if ($("#brewHint")) {$("#brewHint").textContent =
+        "Press SPACE or tap BREW when the needle is in the green zone.";}
 
 
     if (idleMode && !brewRunning) {
@@ -674,17 +674,17 @@ function drawBrewFrame() {
 
 function updateBrewHud() {
 
-    if ($("#brewStreak")) $("#brewStreak").textContent =
-        brewStreakValue;
+    if ($("#brewStreak")) {$("#brewStreak").textContent =
+        brewStreakValue;}
 
-    if ($("#brewHeat")) $("#brewHeat").textContent =
-        `x${Math.floor(brewStreakValue / 5) + 1}`;
+    if ($("#brewHeat")) {$("#brewHeat").textContent =
+        `x${Math.floor(brewStreakValue / 5) + 1}`;}
 
     const best =
         getHighScore("perfect-brew");
 
-    if ($("#brewBestHud")) $("#brewBestHud").textContent =
-        best === null ? 0 : best;
+    if ($("#brewBestHud")) {$("#brewBestHud").textContent =
+        best === null ? 0 : best;}
 
 }
 
@@ -790,8 +790,8 @@ function endBrewRun() {
 
 
     let message =
-        `You brewed ${brewStreakValue} perfect cups.` +
-        (currentUser && brewRunXp > 0 ? ` +${brewRunXp} XP` : "");
+        `You brewed ${brewStreakValue} perfect cups.${ 
+        currentUser && brewRunXp > 0 ? ` +${brewRunXp} XP` : ""}`;
 
 
     if (result.isNewRecord && brewStreakValue > 0) {
@@ -906,7 +906,7 @@ let leafLastFrame = 0;
 
 let leafRafId = null;
 
-let leafKeys = { left: false, right: false };
+const leafKeys = { left: false, right: false };
 
 
 const LEAF_W = 420;
@@ -1264,20 +1264,20 @@ function drawLeafFrame() {
 
 function updateLeafHud() {
 
-    if ($("#leafScore")) $("#leafScore").textContent =
-        leafScoreValue;
+    if ($("#leafScore")) {$("#leafScore").textContent =
+        leafScoreValue;}
 
 
-    if ($("#leafLives")) $("#leafLives").textContent =
+    if ($("#leafLives")) {$("#leafLives").textContent =
         "♥".repeat(Math.max(0, leafLivesLeft)) +
-        "·".repeat(Math.max(0, 3 - leafLivesLeft));
+        "·".repeat(Math.max(0, 3 - leafLivesLeft));}
 
 
     const best =
         getHighScore("leaf-catch");
 
-    if ($("#leafBestHud")) $("#leafBestHud").textContent =
-        best === null ? 0 : best;
+    if ($("#leafBestHud")) {$("#leafBestHud").textContent =
+        best === null ? 0 : best;}
 
 }
 
@@ -1311,8 +1311,8 @@ function endLeafGame() {
 
 
     let message =
-        `Final score ${leafScoreValue}.` +
-        (currentUser && xpEarned > 0 ? ` +${xpEarned} XP` : "");
+        `Final score ${leafScoreValue}.${ 
+        currentUser && xpEarned > 0 ? ` +${xpEarned} XP` : ""}`;
 
 
     if (result.isNewRecord && leafScoreValue > 0) {
@@ -1754,17 +1754,17 @@ function handleMemoryMismatch() {
 
 function updateMemoryHud() {
 
-    if ($("#memoryMoves")) $("#memoryMoves").textContent =
-        memoryMovesCount;
+    if ($("#memoryMoves")) {$("#memoryMoves").textContent =
+        memoryMovesCount;}
 
-    if ($("#memoryPairs")) $("#memoryPairs").textContent =
-        `${memoryPairsFound} / ${memoryTotalPairs}`;
+    if ($("#memoryPairs")) {$("#memoryPairs").textContent =
+        `${memoryPairsFound} / ${memoryTotalPairs}`;}
 
     const best =
         getHighScore("tea-memory");
 
-    if ($("#memoryBestHud")) $("#memoryBestHud").textContent =
-        best === null ? "—" : best;
+    if ($("#memoryBestHud")) {$("#memoryBestHud").textContent =
+        best === null ? "—" : best;}
 
 }
 
@@ -1798,8 +1798,8 @@ function finishMemoryGame() {
 
 
     let message =
-        `All teas matched in ${memoryMovesCount} moves! ` +
-        (currentUser ? `+${xpEarned} XP` : "Log in to earn XP.");
+        `All teas matched in ${memoryMovesCount} moves! ${ 
+        currentUser ? `+${xpEarned} XP` : "Log in to earn XP."}`;
 
 
     if (result.isNewRecord) {

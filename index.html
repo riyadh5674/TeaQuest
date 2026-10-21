@@ -561,6 +561,31 @@
 
         </article>
 
+        <article class="arcade-card">
+
+            <span class="arcade-art">⛏️</span>
+
+            <h3>MINECRAFT QUEST</h3>
+
+            <p>
+                A full voxel sandbox built with WebGL.
+                Mine, craft and build in a world of tea.
+            </p>
+
+            <small class="arcade-best">
+                VOXEL SANDBOX —
+                <strong id="mcVersionLabel">v1.1.0</strong>
+            </small>
+
+            <button
+                class="pixel-button primary"
+                id="playMinecraftQuest"
+            >
+                ▶ PLAY
+            </button>
+
+        </article>
+
     </div>
 
 </section>
@@ -1651,8 +1676,8 @@
 
         <form id="authForm">
 
-            <!-- SIGNUP FIELDS (shown in signup mode) -->
-            <div id="signupFields" class="hidden-field">
+            <!-- SIGNUP: IDENTITY (shown in signup mode) -->
+            <div id="signupIdentity" class="hidden-field">
 
                 <div class="form-row">
                     <label>
@@ -1687,6 +1712,11 @@
                     >
                 </label>
 
+            </div>
+
+            <!-- SHARED: EMAIL (visible in every mode except reset) -->
+            <div id="coreAuthFields">
+
                 <label>
                     EMAIL
                     <input
@@ -1696,6 +1726,11 @@
                         autocomplete="email"
                     >
                 </label>
+
+            </div>
+
+            <!-- SIGNUP: DETAILS (shown in signup mode) -->
+            <div id="signupDetails" class="hidden-field">
 
                 <div class="form-row">
                     <label>
@@ -1791,8 +1826,14 @@
                         COUNTRY
                         <select id="authCountry" autocomplete="country">
                             <option value="US">United States</option>
+                            <option value="SA">Saudi Arabia</option>
                             <option value="CA">Canada</option>
                             <option value="GB">United Kingdom</option>
+                            <option value="AE">United Arab Emirates</option>
+                            <option value="KW">Kuwait</option>
+                            <option value="QA">Qatar</option>
+                            <option value="BH">Bahrain</option>
+                            <option value="OM">Oman</option>
                             <option value="AU">Australia</option>
                             <option value="DE">Germany</option>
                             <option value="FR">France</option>
@@ -1823,18 +1864,8 @@
 
             </div>
 
-            <!-- LOGIN / FORGOT / RESET / ADMIN FIELDS -->
+            <!-- PASSWORD (shown in login, signup and admin modes) -->
             <div id="loginFields">
-
-                <label>
-                    EMAIL
-                    <input
-                        id="authEmail"
-                        type="email"
-                        required
-                        autocomplete="email"
-                    >
-                </label>
 
                 <label id="authPasswordLabel">
                     PASSWORD
@@ -2518,6 +2549,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="utils.js"></script>
 <script src="security.js"></script>
 <script>
 window.FIREBASE_CONFIG = {
@@ -2535,6 +2567,8 @@ window.FIREBASE_CONFIG = {
 <script src="fx.js"></script>
 
 <script src="arcade.js"></script>
+
+<script src="minecraft.js"></script>
 
 <script src="social.js"></script>
 

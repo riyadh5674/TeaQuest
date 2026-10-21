@@ -460,7 +460,7 @@ const FX_CONFETTI_COLORS = [
 
 let fxConfettiLayer = null;
 
-let fxConfettiPieces = [];
+const fxConfettiPieces = [];
 
 let fxConfettiRunning = false;
 

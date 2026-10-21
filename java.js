@@ -204,95 +204,21 @@ const QUESTS = [
 ];
 
 
-const ACHIEVEMENTS = [
-
-    {
-        id: "first-leaf",
-        name: "FIRST LEAF",
-        description: "First tea discovered.",
-        condition: user =>
-            (user.discoveries || []).length >= 1
-    },
-
-    {
-        id: "collector",
-        name: "COLLECTOR",
-        description: "Discover 5 teas.",
-        condition: user =>
-            (user.discoveries || []).length >= 5
-    },
-
-    {
-        id: "tea-scholar",
-        name: "TEA SCHOLAR",
-        description: "Discover 10 teas.",
-        condition: user =>
-            (user.discoveries || []).length >= 10
-    },
-
-    {
-        id: "lucky-leaf",
-        name: "LUCKY LEAF",
-        description: "Spin the Tea Roulette 10 times.",
-        condition: user =>
-            (user.rouletteSpins || 0) >= 10
-    },
-
-    {
-        id: "tea-master",
-        name: "TEA MASTER",
-        description: "Reach Level 10.",
-        condition: user =>
-            getLevelInfo(user.xp).level >= 10
-    },
-
-    {
-        id: "codex-keeper",
-        name: "CODEX KEEPER",
-        description: "Discover every tea in the marketplace.",
-        condition: user =>
-            products.length > 0 &&
-            (user.discoveries || []).length >= products.length
-    },
-
-    {
-        id: "arcade-rookie",
-        name: "ARCADE ROOKIE",
-        description: "Play your first arcade game.",
-        condition: user =>
-            (user.arcadePlays || 0) >= 1
-    },
-
-    {
-        id: "perfect-palate",
-        name: "PERFECT PALATE",
-        description: "Brew 15 perfect cups in a row.",
-        condition: user =>
-            (user.highScores?.["perfect-brew"] || 0) >= 15
-    },
-
-    {
-        id: "leaf-legend",
-        name: "LEAF LEGEND",
-        description: "Score 500 in Leaf Catch.",
-        condition: user =>
-            (user.highScores?.["leaf-catch"] || 0) >= 500
-    },
-
-    {
-        id: "memory-master",
-        name: "MEMORY MASTER",
-        description: "Win Tea Memory in 12 moves or fewer.",
-        condition: user =>
-        {
-            const best =
-                user.highScores?.["tea-memory"] || 0;
-
-            return best > 0 && best <= 12;
-        }
-    }
-
-];
+const ACHIEVEMENTS =
+    window.TeaQuestUtils
+        ? window.TeaQuestUtils.ACHIEVEMENT_DEFINITIONS.map(
+              def => ({
+                  id: def.id,
+                  name: def.name,
+                  description: def.description,
+                  condition: user =>
+                      def.condition(
+                          user,
+                          products.length
+                      )
+              })
+          )
+        : [];
 
 
 /* =========================================================
@@ -1340,7 +1266,15 @@ const $$ = selector =>
 
 function escapeHTML(value) {
 
-    return String(value)
+    if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.escapeHTML(value);
+    }
+
+    return String(
+        value === null || value === undefined
+            ? ""
+            : value
+    )
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
@@ -1351,6 +1285,10 @@ function escapeHTML(value) {
 
 
 function shortOrderId(id) {
+
+    if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.shortOrderId(id);
+    }
 
     const text =
         String(id || "");
@@ -1369,6 +1307,10 @@ function shortOrderId(id) {
 ======================================================== */
 
 function getProductRarity(product) {
+
+    if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.getProductRarity(product);
+    }
 
     if (!product) return "common";
 
@@ -1392,12 +1334,59 @@ function getProductRarity(product) {
 }
 
 
-const XP_PER_LEVEL = 100;
+const XP_PER_LEVEL =
+    window.TeaQuestUtils
+        ? window.TeaQuestUtils.XP_PER_LEVEL
+        : 100;
 
-const ORDER_XP_REWARD = 100;
+const ORDER_XP_REWARD =
+    window.TeaQuestUtils
+        ? window.TeaQuestUtils.ORDER_XP_REWARD
+        : 100;
 
+const MIN_SIGNUP_AGE =
+    window.TeaQuestUtils
+        ? window.TeaQuestUtils.MIN_SIGNUP_AGE
+        : 13;
+
+
+function calculateAge(dateOfBirth) {
+
+    if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.calculateAge(dateOfBirth);
+    }
+
+    const birth =
+        new Date(dateOfBirth);
+
+    if (isNaN(birth.getTime())) {
+        return null;
+    }
+
+    const now =
+        new Date();
+
+    let age =
+        now.getFullYear() - birth.getFullYear();
+
+    const monthDiff =
+        now.getMonth() - birth.getMonth();
+
+    if (monthDiff < 0 ||
+        (monthDiff === 0 &&
+            now.getDate() < birth.getDate())) {
+        age--;
+    }
+
+    return age;
+
+}
 
 function getLevelInfo(xpTotal) {
+
+    if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.getLevelInfo(xpTotal);
+    }
 
     const xp =
         Math.max(
@@ -1962,7 +1951,7 @@ function renderShopProducts() {
             .toLowerCase();
 
 
-    let result =
+    const result =
         products.filter(product => {
 
             const matchesCategory =
@@ -2411,8 +2400,8 @@ function renderCart() {
         }).join("");
 
 
-    if ($("#cartTotal")) $("#cartTotal").textContent =
-        `$${total.toFixed(2)}`;
+    if ($("#cartTotal")) {$("#cartTotal").textContent =
+        `$${total.toFixed(2)}`;}
 
 
     container
@@ -2906,17 +2895,17 @@ function setAuthMode(mode) {
     );
 
 
-    if ($("#authEyebrow")) $("#authEyebrow").textContent =
+    if ($("#authEyebrow")) {$("#authEyebrow").textContent =
         admin
             ? "GUILD MASTER"
             : reset
                 ? "PASSWORD RECOVERY"
                 : forgot
                     ? "PASSWORD RECOVERY"
-                    : "PLAYER ACCESS";
+                    : "PLAYER ACCESS";}
 
 
-    if ($("#authTitle")) $("#authTitle").textContent =
+    if ($("#authTitle")) {$("#authTitle").textContent =
         admin
             ? "GUILD MASTER ACCESS"
             : signup
@@ -2925,10 +2914,10 @@ function setAuthMode(mode) {
                     ? "FORGOT PASSWORD"
                     : reset
                         ? "SET A NEW PASSWORD"
-                        : "WELCOME BACK";
+                        : "WELCOME BACK";}
 
 
-    if ($("#authSubtitle")) $("#authSubtitle").textContent =
+    if ($("#authSubtitle")) {$("#authSubtitle").textContent =
         admin
             ? "Enter your master credentials to open the command center."
             : signup
@@ -2937,10 +2926,10 @@ function setAuthMode(mode) {
                     ? "Enter your account email and we will send a reset link."
                     : reset
                         ? `Enter the code sent to ${$("#authEmail")?.value.trim() || "your email"} plus a new password.`
-                        : "Login to continue your tea quest.";
+                        : "Login to continue your tea quest.";}
 
 
-    if ($("#authSubmitText")) $("#authSubmitText").textContent =
+    if ($("#authSubmitText")) {$("#authSubmitText").textContent =
         admin
             ? "OPEN COMMAND CENTER"
             : signup
@@ -2949,25 +2938,25 @@ function setAuthMode(mode) {
                     ? "SEND RESET LINK"
                     : reset
                         ? "RESET PASSWORD"
-                        : "ENTER WORLD";
+                        : "ENTER WORLD";}
 
 
-    if ($("#authSwitchText")) $("#authSwitchText").textContent =
+    if ($("#authSwitchText")) {$("#authSwitchText").textContent =
         signup
             ? "Already a player?"
-            : "New player?";
+            : "New player?";}
 
 
-    if ($("#authSwitchButton")) $("#authSwitchButton").textContent =
+    if ($("#authSwitchButton")) {$("#authSwitchButton").textContent =
         signup
             ? "LOGIN"
-            : "CREATE ACCOUNT";
+            : "CREATE ACCOUNT";}
 
 
-    if ($("#adminLoginButton")) $("#adminLoginButton").textContent =
+    if ($("#adminLoginButton")) {$("#adminLoginButton").textContent =
         admin
             ? "← BACK TO PLAYER LOGIN"
-            : "⚙ LOGIN AS GUILD MASTER";
+            : "⚙ LOGIN AS GUILD MASTER";}
 
 
     $("#adminSetupNote")
@@ -2984,17 +2973,39 @@ function setAuthMode(mode) {
         );
 
 
-    // Toggle signup vs login fields
-    $("#signupFields")
+    // Toggle the field groups for the current mode.
+    //
+    //   signupIdentity / signupDetails -> signup only
+    //   coreAuthFields (email)          -> every mode except reset
+    //   loginFields (password)          -> login, signup and admin
+    //
+    // The email used to live inside the signup block while a second
+    // copy sat in the login block. Both carried id="authEmail", so
+    // getElementById always resolved to the hidden signup copy:
+    // login submitted an empty email and the hidden `required` copy
+    // silently blocked signup submission.
+    $("#signupIdentity")
         ?.classList.toggle(
             "hidden-field",
             !signup
         );
 
+    $("#signupDetails")
+        ?.classList.toggle(
+            "hidden-field",
+            !signup
+        );
+
+    $("#coreAuthFields")
+        ?.classList.toggle(
+            "hidden-field",
+            reset
+        );
+
     $("#loginFields")
         ?.classList.toggle(
             "hidden-field",
-            signup || forgot || reset || admin
+            forgot || reset
         );
 
 
@@ -3053,17 +3064,30 @@ function setAuthMode(mode) {
     }
 
 
-    if ($("#authPassword")) $("#authPassword").required =
-        !signup && !forgot && !reset;
+    /* `required` must never sit on a hidden field: the browser
+       refuses to submit and cannot focus the control. Each
+       field group is hidden in some mode, so the flag is
+       derived from that same mode. */
 
-    if ($("#authName")) $("#authName").required =
-        signup;
-    if ($("#authFirstName")) $("#authFirstName").required =
-        signup;
-    if ($("#authLastName")) $("#authLastName").required =
-        signup;
-    if ($("#authEmail")) $("#authEmail").required =
-        signup || mode === "login" || forgot;
+    if ($("#authPassword")) {
+        $("#authPassword").required =
+            !forgot && !reset;
+    }
+
+    if ($("#authName")) {
+        $("#authName").required =
+            signup;
+    }
+
+    if ($("#authFirstName")) {
+        $("#authFirstName").required =
+            signup;
+    }
+
+    if ($("#authLastName")) {
+        $("#authLastName").required =
+            signup;
+    }
     if ($("#authPhone")) $("#authPhone").required = false;
     if ($("#authDOB")) $("#authDOB").required = false;
     if ($("#authGender")) $("#authGender").required = false;
@@ -3670,14 +3694,8 @@ async function handleAuthentication(event) {
 
     // Validate DOB if provided (must be 13+)
     if (dob) {
-        const birthDate = new Date(dob);
-        const today = new Date();
-        const age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-        }
-        if (age < 13) {
+        const age = calculateAge(dob);
+        if (age !== null && age < MIN_SIGNUP_AGE) {
             toast(
                 "CHARACTER ERROR",
                 "You must be at least 13 years old to register."
@@ -3805,7 +3823,7 @@ async function handleAuthentication(event) {
 
     navigateTo("shop");
 
-}}
+}
 
 
 async function logout() {
@@ -3881,19 +3899,19 @@ function updateNavigation() {
 
     if (!currentUser) {
 
-        if ($("#accountLabel")) $("#accountLabel").textContent =
-            "PLAYER";
+        if ($("#accountLabel")) {$("#accountLabel").textContent =
+            "PLAYER";}
 
         return;
     }
 
 
-    if ($("#accountLabel")) $("#accountLabel").textContent =
+    if ($("#accountLabel")) {$("#accountLabel").textContent =
         currentUser.role === "admin"
             ? "ADMIN"
             : currentUser.name
                 .split(" ")[0]
-                .toUpperCase();
+                .toUpperCase();}
 
 }
 
@@ -4024,34 +4042,34 @@ function renderProfile() {
     if (!currentUser) return;
 
 
-    if ($("#profileName")) $("#profileName").textContent =
-        currentUser.name;
+    if ($("#profileName")) {$("#profileName").textContent =
+        currentUser.name;}
 
 
-    if ($("#profileEmail")) $("#profileEmail").textContent =
-        currentUser.email;
+    if ($("#profileEmail")) {$("#profileEmail").textContent =
+        currentUser.email;}
 
 
-    if ($("#profileAvatar")) $("#profileAvatar").textContent =
+    if ($("#profileAvatar")) {$("#profileAvatar").textContent =
         currentUser.role === "admin"
             ? "👑"
-            : "🧙";
+            : "🧙";}
 
 
     const levelInfo =
         getLevelInfo(currentUser.xp);
 
 
-    if ($("#profileLevel")) $("#profileLevel").textContent =
-        `LEVEL ${levelInfo.level}`;
+    if ($("#profileLevel")) {$("#profileLevel").textContent =
+        `LEVEL ${levelInfo.level}`;}
 
 
-    if ($("#xpProgress")) $("#xpProgress").style.width =
-        `${levelInfo.xpIntoLevel}%`;
+    if ($("#xpProgress")) {$("#xpProgress").style.width =
+        `${levelInfo.xpIntoLevel}%`;}
 
 
-    if ($("#xpText")) $("#xpText").textContent =
-        `${levelInfo.xpIntoLevel} / ${levelInfo.xpForNextLevel} XP`;
+    if ($("#xpText")) {$("#xpText").textContent =
+        `${levelInfo.xpIntoLevel} / ${levelInfo.xpForNextLevel} XP`;}
 
 
     renderQuests();
@@ -4189,7 +4207,7 @@ function populateEditForm() {
     };
 
     fields.forEach(field => {
-        const el = $("#edit" + field);
+        const el = $(`#edit${  field}`);
         if (el) {
             const userField = mapping[field];
             if (userField && currentUser[userField] !== undefined) {
@@ -4251,12 +4269,8 @@ async function saveProfileChanges() {
 
     // Validate DOB
     if (updates.date_of_birth) {
-        const birthDate = new Date(updates.date_of_birth);
-        const today = new Date();
-        const age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
-        if (age < 13) {
+        const age = calculateAge(updates.date_of_birth);
+        if (age !== null && age < MIN_SIGNUP_AGE) {
             toast("ERROR", "You must be at least 13 years old");
             if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE CHANGES"; }
             return;
@@ -4876,25 +4890,25 @@ function renderAdminStats() {
         );
 
 
-    if ($("#adminRevenue")) $("#adminRevenue").textContent =
-        `$${revenue.toFixed(2)}`;
+    if ($("#adminRevenue")) {$("#adminRevenue").textContent =
+        `$${revenue.toFixed(2)}`;}
 
 
-    if ($("#adminOrders")) $("#adminOrders").textContent =
-        orders.length;
+    if ($("#adminOrders")) {$("#adminOrders").textContent =
+        orders.length;}
 
 
-    if ($("#adminUsers")) $("#adminUsers").textContent =
+    if ($("#adminUsers")) {$("#adminUsers").textContent =
         currentUser && !customers.length
             ? 1
             : customers.filter(
                   user =>
                       user.role === "player"
-              ).length;
+              ).length;}
 
 
-    if ($("#adminProducts")) $("#adminProducts").textContent =
-        products.length;
+    if ($("#adminProducts")) {$("#adminProducts").textContent =
+        products.length;}
 
 }
 
@@ -5207,13 +5221,13 @@ function formatOrderDate(iso) {
     }
 
 
-    return date.toLocaleDateString("en-US", {
+    return `${date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric"
-    }) + " · " + date.toLocaleTimeString("en-US", {
+    })  } · ${  date.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit"
-    });
+    })}`;
 
 }
 
@@ -5507,11 +5521,11 @@ function viewOrderDetails(orderId) {
     if (!order) return;
 
 
-    if ($("#orderModalTitle")) $("#orderModalTitle").textContent =
-        shortOrderId(order.id);
+    if ($("#orderModalTitle")) {$("#orderModalTitle").textContent =
+        shortOrderId(order.id);}
 
 
-    if ($("#orderDetailsContent")) $("#orderDetailsContent").innerHTML = `
+    if ($("#orderDetailsContent")) {$("#orderDetailsContent").innerHTML = `
 
         <div class="order-info-grid">
 
@@ -5571,7 +5585,7 @@ function viewOrderDetails(orderId) {
 
         </div>
 
-    `;
+    `;}
 
 
     openModal(
@@ -5677,8 +5691,7 @@ function renderAdminCustomersTable() {
             const isSelf =
                 user.id === currentUser.id;
 
-            const level =
-                getLevelInfo(user.xp).level;
+            const {level} = getLevelInfo(user.xp);
 
             const userOrderCount =
                 orders.filter(
@@ -6646,8 +6659,8 @@ function revealOracleResult() {
         getProductRarity(product);
 
 
-    if ($("#oracleTitle")) $("#oracleTitle").textContent =
-        "YOU HAVE DISCOVERED YOUR BREW.";
+    if ($("#oracleTitle")) {$("#oracleTitle").textContent =
+        "YOU HAVE DISCOVERED YOUR BREW.";}
 
 
     $("#oracleResult").innerHTML = `
@@ -6955,11 +6968,11 @@ function revealRouletteResult(product) {
     rouletteSpinning = false;
 
 
-    if ($("#rouletteIcon")) $("#rouletteIcon").textContent =
-        product.icon;
+    if ($("#rouletteIcon")) {$("#rouletteIcon").textContent =
+        product.icon;}
 
-    if ($("#rouletteTitle")) $("#rouletteTitle").textContent =
-        "TEA DISCOVERED!";
+    if ($("#rouletteTitle")) {$("#rouletteTitle").textContent =
+        "TEA DISCOVERED!";}
 
 
     const rarity =
@@ -7004,8 +7017,8 @@ function revealRouletteResult(product) {
 
     if (rarity === "legendary") {
 
-        if ($("#rouletteTitle")) $("#rouletteTitle").textContent =
-            "✦ LEGENDARY DROP ✦";
+        if ($("#rouletteTitle")) {$("#rouletteTitle").textContent =
+            "✦ LEGENDARY DROP ✦";}
 
         window.sfx?.legendary?.();
 
@@ -7434,8 +7447,8 @@ function showLevelUp(level) {
     if (!overlay) return;
 
 
-    if ($("#levelUpNumber")) $("#levelUpNumber").textContent =
-        level;
+    if ($("#levelUpNumber")) {$("#levelUpNumber").textContent =
+        level;}
 
 
     if (levelUpTimeoutId) {

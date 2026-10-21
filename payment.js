@@ -209,7 +209,7 @@
           currency: 'usd',
           customerEmail: orderData.email,
           metadata: {
-            orderId: orderData.orderId || 'temp-' + Date.now(),
+            orderId: orderData.orderId || `temp-${  Date.now()}`,
             customerName: orderData.name,
             items: JSON.stringify(orderData.items)
           }
@@ -225,7 +225,7 @@
     } catch (error) {
       console.error('[Stripe] Create payment intent failed:', error);
       // Fallback: use demo mode
-      return { clientSecret: 'pi_demo_' + Date.now(), demo: true };
+      return { clientSecret: `pi_demo_${  Date.now()}`, demo: true };
     }
   }
 
@@ -292,7 +292,7 @@
           successUrl: `${window.location.origin}/#profile?payment=success&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/#checkout?canceled=true`,
           metadata: {
-            orderId: orderData.orderId || 'temp-' + Date.now(),
+            orderId: orderData.orderId || `temp-${  Date.now()}`,
             customerName: orderData.name
           }
         })

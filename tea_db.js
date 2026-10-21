@@ -403,7 +403,7 @@
 
         TeaChain.prototype._exec = async function () {
 
-            const table = this.table;
+            const {table} = this;
 
             /* order_items legacy inserts append to the parent order */
             if (
@@ -656,7 +656,7 @@
                     if (!pDoc.exists) {
                         return {
                             data: null,
-                            error: { message: "Unknown product " + it.product_id }
+                            error: { message: `Unknown product ${  it.product_id}` }
                         };
                     }
                     const p = pDoc.data();
@@ -700,7 +700,7 @@
             }
             return Promise.resolve({
                 data: null,
-                error: { message: "Unknown RPC " + name }
+                error: { message: `Unknown RPC ${  name}` }
             });
         }
 
@@ -721,9 +721,9 @@
 
         TeaChannel.prototype.on = function (type, config, cb) {
             this.listeners.push({
-                type: type,
+                type,
                 config: config || {},
-                cb: cb
+                cb
             });
             return this;
         };
@@ -801,7 +801,7 @@
                 (l) => l.type === "presence"
             );
             if (!pr) return;
-            const cb = pr.cb;
+            const {cb} = pr;
 
             const unsub = fs.collection("presence").onSnapshot(
                 (snap) => {
@@ -809,7 +809,7 @@
                     const map = {};
                     snap.forEach((doc) => {
                         const d = doc.data() || {};
-                        let at = d.at ? d.at.toMillis ? d.at.toMillis() : 0 : 0;
+                        const at = d.at ? d.at.toMillis ? d.at.toMillis() : 0 : 0;
                         if (now - at > 90000) return;
                         map[doc.id] = {
                             user_id: doc.id,
@@ -854,13 +854,13 @@
                 .doc(uid)
                 .set({
                     user_id: uid,
-                    name: name,
+                    name,
                     at: serverTimestamp()
                 })
                 .catch(() => {});
             this.presenceMap[uid] = {
                 user_id: uid,
-                name: name
+                name
             };
             if (this.presenceCb) this.presenceCb();
         };
@@ -898,7 +898,7 @@
 
         const storageApi = {
             from(bucket) {
-                const prefix = bucket ? bucket + "/" : "";
+                const prefix = bucket ? `${bucket}/` : "";
                 return {
                     async upload(path, blob, options) {
                         try {
@@ -988,11 +988,11 @@
         return {
             auth: authApi,
             from: (table) => new TeaChain(table),
-            rpc: rpc,
-            channel: channel,
-            removeChannel: removeChannel,
+            rpc,
+            channel,
+            removeChannel,
             storage: storageApi,
-            seedProducts: seedProducts
+            seedProducts
         };
 
     }

@@ -11,13 +11,13 @@
   function injectCSP() {
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com",
+      "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://js.stripe.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com",
+      "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com https://api.stripe.com https://*.stripe.com",
       "media-src 'self' https://*.firebaseio.com https://*.firebasestorage.googleapis.com blob:",
-      "frame-src 'self' https://*.firebaseapp.com",
+      "frame-src 'self' https://*.firebaseapp.com https://js.stripe.com https://hooks.stripe.com",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
       "form-action 'self'",
@@ -38,28 +38,50 @@
   // =========================================================
   window.Security = {
     // Enhanced HTML escaping
-    escapeHTML: function (value) {
+    escapeHTML (value) {
+
+      /* Delegate to the shared, unit-tested implementation.
+         Falls back to a local copy only if utils.js failed
+         to load (e.g. offline service-worker cache miss). */
+
+      if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.escapeHTML(value);
+      }
+
+      if (value === null || value === undefined) {
+        return '';
+      }
+
       return String(value)
-        .replaceAll('&', '&')
-        .replaceAll('<', '<')
-        .replaceAll('>', '>')
-        .replaceAll('"', '"')
-        .replaceAll("'", '&#039;')
-        .replaceAll('/', '&#x2F;'); // Prevents closing tag injection
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/\//g, '&#x2F;'); // Prevents closing tag injection
     },
 
     // Sanitize for safe attribute values
-    escapeAttr: function (value) {
+    escapeAttr (value) {
+
+      if (window.TeaQuestUtils) {
+        return window.TeaQuestUtils.escapeAttr(value);
+      }
+
+      if (value === null || value === undefined) {
+        return '';
+      }
+
       return String(value)
-        .replaceAll('&', '&')
-        .replaceAll('<', '<')
-        .replaceAll('>', '>')
-        .replaceAll('"', '"')
-        .replaceAll("'", '&#039;');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     },
 
     // Sanitize URLs - only allow safe protocols
-    sanitizeURL: function (url) {
+    sanitizeURL (url) {
       try {
         const parsed = new URL(url, window.location.href);
         const allowedProtocols = ['https:', 'http:', 'mailto:', 'tel:'];
@@ -67,6 +89,7 @@
           return '#';
         }
         // Block javascript: and data: URIs
+        // eslint-disable-next-line no-script-url
         if (parsed.protocol === 'javascript:' || parsed.protocol === 'data:') {
           return '#';
         }
@@ -77,28 +100,29 @@
     },
 
     // Validate email format
-    validateEmail: function (email) {
+    validateEmail (email) {
       const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
       return re.test(String(email).toLowerCase());
     },
 
     // Validate phone (basic)
-    validatePhone: function (phone) {
+    validatePhone (phone) {
       const re = /^[\d\s\-+()]{7,20}$/;
       return re.test(String(phone));
     },
 
     // Sanitize text input (max length, no control chars)
-    sanitizeText: function (text, maxLength = 500) {
+    sanitizeText (text, maxLength = 500) {
       if (!text) return '';
       return String(text)
+        // eslint-disable-next-line no-control-regex
         .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
         .slice(0, maxLength)
         .trim();
     },
 
     // Sanitize filename
-    sanitizeFilename: function (name) {
+    sanitizeFilename (name) {
       return String(name)
         .replace(/[^a-zA-Z0-9._-]/g, '_')
         .slice(0, 100);
@@ -111,7 +135,7 @@
   window.RateLimiter = {
     limits: new Map(),
 
-    check: function (key, maxRequests, windowMs) {
+    check (key, maxRequests, windowMs) {
       const now = Date.now();
       const windowStart = now - windowMs;
 
@@ -134,16 +158,16 @@
     },
 
     // Pre-configured limiters
-    api: function (action) {
+    api (action) {
       return this.check(`api:${action}`, 30, 60000); // 30/min
     },
-    auth: function () {
+    auth () {
       return this.check('auth', 5, 300000); // 5/5min
     },
-    chat: function () {
+    chat () {
       return this.check('chat', 10, 60000); // 10/min
     },
-    upload: function () {
+    upload () {
       return this.check('upload', 5, 300000); // 5/5min
     }
   };
@@ -154,10 +178,10 @@
   window.SecureStorage = {
     prefix: 'tq_secure_',
 
-    set: function (key, value, encrypt = false) {
+    set (key, value, encrypt = false) {
       try {
         const data = {
-          value: value,
+          value,
           timestamp: Date.now(),
           version: 1
         };
@@ -176,7 +200,7 @@
       }
     },
 
-    get: function (key, defaultValue = null) {
+    get (key, defaultValue = null) {
       try {
         const item = localStorage.getItem(this.prefix + key);
         if (!item) return defaultValue;
@@ -192,11 +216,11 @@
       }
     },
 
-    remove: function (key) {
+    remove (key) {
       localStorage.removeItem(this.prefix + key);
     },
 
-    clear: function () {
+    clear () {
       Object.keys(localStorage)
         .filter(k => k.startsWith(this.prefix))
         .forEach(k => localStorage.removeItem(k));
@@ -209,7 +233,7 @@
   window.CSRF = {
     tokenName: 'tq_csrf',
 
-    generate: function () {
+    generate () {
       const array = new Uint8Array(32);
       crypto.getRandomValues(array);
       const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
@@ -217,16 +241,16 @@
       return token;
     },
 
-    get: function () {
+    get () {
       return sessionStorage.getItem(this.tokenName) || this.generate();
     },
 
-    validate: function (token) {
+    validate (token) {
       return token === this.get();
     },
 
     // Add token to form data
-    inject: function (formData) {
+    inject (formData) {
       if (formData instanceof FormData) {
         formData.append('_csrf', this.get());
       } else if (typeof formData === 'object') {
@@ -307,7 +331,7 @@
       'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js': 'sha384-'
     },
 
-    verify: function (url, content) {
+    verify (url, content) {
       const expected = this.hashes[url];
       if (!expected) return true; // No hash to verify
 

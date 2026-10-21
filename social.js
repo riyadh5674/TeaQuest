@@ -554,8 +554,7 @@ async function shrinkImage(file) {
 
                     result = new File(
                         [blob],
-                        file.name.replace(/\.\w+$/, "") +
-                            ".jpg",
+                        `${file.name.replace(/\.\w+$/, "")}.jpg`,
                         { type: "image/jpeg" }
                     );
 
@@ -602,11 +601,9 @@ async function uploadAttachment(file) {
 
     const path =
 
-        `${me()}/${Date.now()}-` +
+        `${me()}/${Date.now()}-${ 
 
-        crypto.randomUUID() +
-
-        `.${ext}`;
+        crypto.randomUUID()}.${ext}`;
 
 
     const { error } = await db.storage
@@ -647,11 +644,11 @@ async function uploadAttachment(file) {
 function formatBytes(bytes) {
 
     if (bytes >= 1048576) {
-        return (bytes / 1048576).toFixed(1) + " MB";
+        return `${(bytes / 1048576).toFixed(1)} MB`;
     }
 
-    return Math.max(1,
-        Math.round(bytes / 1024)) + " KB";
+    return `${Math.max(1,
+        Math.round(bytes / 1024))} KB`;
 
 }
 
@@ -1550,8 +1547,7 @@ document.addEventListener(
         const action =
             button.dataset.social;
 
-        const id =
-            button.dataset.id;
+        const {id} = button.dataset;
 
         const rowId =
             button.dataset.row;
@@ -2016,8 +2012,8 @@ function buildMessageElement(row, ownClass, source) {
 
 
     element.className =
-        "chat-msg" +
-        (ownClass ? " own" : "");
+        `chat-msg${ 
+        ownClass ? " own" : ""}`;
 
     element.dataset.mid = row.id;
 
@@ -2226,7 +2222,7 @@ async function sendFloorMessage() {
             .insert({
                 sender_id: me(),
                 body: body ||
-                    (attachment ? "📎 " + attachment.name : ""),
+                    (attachment ? `📎 ${  attachment.name}` : ""),
                 attachment_url:
                     attachment ? attachment.url : "",
                 attachment_type:
@@ -2496,7 +2492,7 @@ async function sendDmLetter() {
                 sender_id: me(),
                 recipient_id: activeDmPartner,
                 body: body ||
-                    (attachment ? "📎 " + attachment.name : ""),
+                    (attachment ? `📎 ${  attachment.name}` : ""),
                 attachment_url:
                     attachment ? attachment.url : "",
                 attachment_type:
