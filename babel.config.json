@@ -2,9 +2,10 @@
   "presets": [
     ["@babel/preset-env", {
       "targets": {
+        "node": "current",
         "browsers": ["> 1%", "last 2 versions", "not dead", "not ie 11"]
       },
-      "modules": false
+      "modules": "auto"
     }]
   ]
 }

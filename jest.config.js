@@ -3,20 +3,19 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.js'],
   moduleFileExtensions: ['js', 'json'],
   collectCoverageFrom: [
-    '*.js',
+    'utils.js',
+    'security.js',
+    'payment.js',
     '!**/node_modules/**',
     '!**/dist/**',
     '!*.config.js'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  setupFiles: ['<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transform: {
     '^.+\\.js$': 'babel-jest'
   },
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json'
-    }
-  }
+  clearMocks: true
 };
