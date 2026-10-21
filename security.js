@@ -11,9 +11,13 @@
   function injectCSP() {
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://js.stripe.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
+      // The Firebase SDK is self-hosted in vendor/, so no CDN origin
+      // needs to be trusted for scripts any more. Stripe is the only
+      // remaining third-party script source.
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+      "style-src 'self' 'unsafe-inline'",
+      // Webfonts are self-hosted in fonts/ (SIL Open Font License).
+      "font-src 'self'",
       "img-src 'self' data: https: blob:",
       "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com https://api.stripe.com https://*.stripe.com",
       "media-src 'self' https://*.firebaseio.com https://*.firebasestorage.googleapis.com blob:",
@@ -322,14 +326,13 @@
   // SUBRESOURCE INTEGRITY (for external scripts)
   // =========================================================
   window.SubresourceIntegrity = {
-    // Expected hashes for external resources
-    hashes: {
-      'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap': 'sha384-',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js': 'sha384-',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js': 'sha384-',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js': 'sha384-',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js': 'sha384-'
-    },
+    // Expected hashes for external resources.
+    //
+    // The Firebase SDK and the webfonts used to be loaded from
+    // www.gstatic.com and fonts.googleapis.com. They are self-hosted
+    // now, so there is no third-party script left to pin; keeping an
+    // empty map here would be misleading.
+    hashes: {},
 
     verify (url, content) {
       const expected = this.hashes[url];

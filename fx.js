@@ -15,9 +15,14 @@ const FX_STORAGE_KEY =
 
 
 const FX_REDUCED_MOTION =
-    window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-    ).matches;
+    window.TeaQuestUtils
+        ? window.TeaQuestUtils.prefersReducedMotion()
+        : Boolean(
+            window.matchMedia &&
+            window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+            ).matches
+        );
 
 
 function fxStorageGet(key) {

@@ -61,7 +61,8 @@ async function build() {
 
 /**
  * Read index.html and return every local <script src="*.js"> file.
- * Remote scripts (Firebase SDK, Stripe) are ignored.
+ * Remote scripts (Stripe) and the self-hosted third-party SDK in
+ * vendor/ are ignored: those are copied verbatim, not minified.
  */
 function collectLocalScripts() {
   const html = fs.readFileSync(path.join(SRC_DIR, 'index.html'), 'utf8');
@@ -74,6 +75,7 @@ function collectLocalScripts() {
     const src = match[1];
 
     if (/^(https?:)?\/\//.test(src)) continue;
+    if (src.startsWith('vendor/')) continue;
     if (!fs.existsSync(path.join(SRC_DIR, src))) continue;
     if (found.includes(src)) continue;
 
@@ -89,7 +91,9 @@ async function copyAssets() {
   const assetsToCopy = [
     'icons',
     'screenshots',
-    'supabase'
+    'supabase',
+    'vendor',
+    'fonts'
   ];
 
   for (const asset of assetsToCopy) {
@@ -234,8 +238,19 @@ async function buildJs(jsFiles) {
           ecma: 2020
         },
         mangle: {
-          toplevel: true,
-          keep_fnames: /^(initialize|render|open|close|show|handle|on|update|save|load|fetch|send|get|set|check|discover|award|record|build|create|start|stop|reset|end|finish|complete|toggle|switch|change|add|remove|delete|update|refresh|sync|normalize|validate|format|parse|stringify|encode|decode|escape|sanitize|verify|authenticate|authorize|connect|disconnect|subscribe|unsubscribe|track|untrack|watch|unwatch|listen|unlisten|emit|on|off|once|trigger|fire|dispatch|publish|notify|alert|warn|error|log|info|debug|trace)$/
+          // Top-level names must NOT be mangled.
+          //
+          // Every file in index.html is a classic script, so they all
+          // share one global scope. Terser mangles each file in
+          // isolation, which made two files independently pick the
+          // same short name ("e", "t", ...) and the browser then
+          // refused the whole bundle with
+          // "Identifier 'e' has already been declared".
+          //
+          // It also renamed exports the app reaches through `window`,
+          // e.g. window.renderArcadeRecords.
+          toplevel: false,
+          keep_fnames: /^(initialize|render|open|close|show|handle|on|update|save|load|fetch|send|get|set|check|discover|award|record|build|create|start|stop|reset|end|finish|complete|toggle|switch|change|add|remove|delete|refresh|sync|normalize|validate|format|parse|stringify|encode|decode|escape|sanitize|verify|authenticate|authorize|connect|disconnect|subscribe|unsubscribe|track|untrack|watch|unwatch|listen|unlisten|emit|off|once|trigger|fire|dispatch|publish|notify|alert|warn|error|log|info|debug|trace)$/
         },
         format: {
           comments: false,
@@ -257,10 +272,27 @@ async function buildJs(jsFiles) {
 async function generateServiceWorker(jsFiles) {
   console.log('🔧 Generating Service Worker...');
 
+  // The self-hosted Firebase SDK and the webfonts have to be precached
+  // too: they are what make the app work offline.
+  const vendorFiles = fs.existsSync(path.join(SRC_DIR, 'vendor'))
+    ? fs.readdirSync(path.join(SRC_DIR, 'vendor'))
+        .filter(name => name.endsWith('.js'))
+        .map(name => '/vendor/' + name)
+    : [];
+
+  const fontFiles = fs.existsSync(path.join(SRC_DIR, 'fonts'))
+    ? fs.readdirSync(path.join(SRC_DIR, 'fonts'))
+        .filter(name => name.endsWith('.woff2') || name.endsWith('.css'))
+        .map(name => '/fonts/' + name)
+    : [];
+
   const staticAssets = [
     '/',
     '/index.html',
     '/style.min.css',
+    '/fonts/fonts.css',
+    ...fontFiles,
+    ...vendorFiles,
     ...jsFiles.map(file => '/' + file.replace(/\.js$/, '.min.js')),
     '/icons/pixel-house.png',
     '/manifest.json'

@@ -9,10 +9,10 @@
     <link rel="icon" href="./icons/pixel-house.png" type="image/png">
     <title>TEAQUEST — Pixel Tea Company</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <!-- Fonts are self-hosted (Press Start 2P and VT323, SIL Open Font
+         License 1.1) so the site still renders correctly on networks
+         that block fonts.googleapis.com / fonts.gstatic.com. -->
+    <link href="fonts/fonts.css" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 </head>
@@ -2545,10 +2545,13 @@
 
 <div id="lightbox" class="lightbox hidden-field"></div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<!-- The Firebase SDK is self-hosted in vendor/ so the app never depends
+     on www.gstatic.com. A blocked CDN there was one reason the site
+     reported "BACKEND OFFLINE" for some users. -->
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-firestore-compat.js"></script>
+<script src="vendor/firebase-storage-compat.js"></script>
 <script src="utils.js"></script>
 <script src="security.js"></script>
 <script>

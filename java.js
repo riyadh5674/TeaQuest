@@ -1155,9 +1155,22 @@ async function restoreSession() {
 
     } else {
 
-        localStorage.removeItem(
-            "teaquest_currentUser"
-        );
+        if (window.TeaQuestUtils) {
+            window.TeaQuestUtils.storageRemove(
+                "teaquest_currentUser"
+            );
+        } else {
+            try {
+                localStorage.removeItem(
+                    "teaquest_currentUser"
+                );
+            } catch (error) {
+                console.warn(
+                    "Storage clear failed",
+                    error
+                );
+            }
+        }
 
     }
 
@@ -1348,6 +1361,10 @@ const MIN_SIGNUP_AGE =
     window.TeaQuestUtils
         ? window.TeaQuestUtils.MIN_SIGNUP_AGE
         : 13;
+
+/* How long the boot sequence waits for the backend before it
+   carries on with the local catalogue. */
+const SERVER_BOOT_TIMEOUT = 8000;
 
 
 function calculateAge(dateOfBirth) {
@@ -1660,14 +1677,41 @@ document.addEventListener("DOMContentLoaded", async () => {
     initializeEditProfile();
 
 
-    await restoreSession();
+    /* Paint the interface immediately from the bundled catalogue.
+       A slow or unreachable backend must never leave the player
+       staring at an empty page, so the first render happens before
+       any network call is made. */
 
-    await loadServerData();
+    renderEverything();
+
+    showPage(
+        location.hash.replace("#", "") || "home",
+        false
+    );
+
+
+    /* Then hydrate from the server. The wait is bounded: a hanging
+       connection must not stall the rest of the boot. The underlying
+       requests keep running and update the UI when they land. */
+
+    await Promise.race([
+        (async () => {
+
+            await restoreSession();
+
+            await loadServerData();
+
+        })(),
+        new Promise((resolve) => {
+            setTimeout(resolve, SERVER_BOOT_TIMEOUT);
+        })
+    ]);
 
 
     renderEverything();
 
-    /* route after session restore so deep links like
+
+    /* route again after session restore so deep links like
        #profile / #admin resolve with the real user */
 
     showPage(
@@ -3856,21 +3900,27 @@ async function logout() {
     orders = [];
 
 
-    localStorage.removeItem(
-        "teaquest_currentUser"
-    );
-
-    localStorage.removeItem(
-        "teaquest_cart"
-    );
-
-    localStorage.removeItem(
-        "teaquest_favorites"
-    );
-
-    localStorage.removeItem(
+    for (const key of [
+        "teaquest_currentUser",
+        "teaquest_cart",
+        "teaquest_favorites",
         "teaquest_orders"
-    );
+    ]) {
+
+        if (window.TeaQuestUtils) {
+            window.TeaQuestUtils.storageRemove(key);
+        } else {
+            try {
+                localStorage.removeItem(key);
+            } catch (error) {
+                console.warn(
+                    "Storage clear failed",
+                    error
+                );
+            }
+        }
+
+    }
 
 
     updateNavigation();
@@ -7222,19 +7272,29 @@ document.addEventListener(
 function initializeTheme() {
 
     const storedTheme =
-        localStorage.getItem(
-            "teaquest_theme"
-        );
+        window.TeaQuestUtils
+            ? window.TeaQuestUtils.storageGet(
+                "teaquest_theme"
+            )
+            : null;
+
 
     /* first visit follows the system preference */
 
+    const prefersLight =
+        window.TeaQuestUtils
+            ? window.TeaQuestUtils.prefersLightColorScheme()
+            : Boolean(
+                window.matchMedia &&
+                window.matchMedia(
+                    "(prefers-color-scheme: light)"
+                ).matches
+            );
+
+
     const savedTheme =
         storedTheme ||
-        (window.matchMedia &&
-         window.matchMedia("(prefers-color-scheme: light)")
-             .matches
-            ? "day"
-            : "night");
+        (prefersLight ? "day" : "night");
 
 
     applyTheme(savedTheme);
@@ -7245,9 +7305,11 @@ function initializeTheme() {
         () => {
 
             const current =
-                localStorage.getItem(
-                    "teaquest_theme"
-                ) || "day";
+                (window.TeaQuestUtils
+                    ? window.TeaQuestUtils.storageGet(
+                        "teaquest_theme"
+                    )
+                    : null) || "day";
 
 
             const next =
@@ -7266,10 +7328,24 @@ function initializeTheme() {
 
 function applyTheme(theme) {
 
-    localStorage.setItem(
-        "teaquest_theme",
-        theme
-    );
+    if (window.TeaQuestUtils) {
+        window.TeaQuestUtils.storageSet(
+            "teaquest_theme",
+            theme
+        );
+    } else {
+        try {
+            localStorage.setItem(
+                "teaquest_theme",
+                theme
+            );
+        } catch (error) {
+            console.warn(
+                "Theme could not be saved",
+                error
+            );
+        }
+    }
 
 
     const night =

@@ -122,7 +122,7 @@
             sanitizeText(value, 120)
                 .replace(/[\\/:*?"<>|]/g, "-")
                 .replace(/\s+/g, "_")
-                .replace(/^[.\-]+/, "");
+                .replace(/^[.-]+/, "");
 
         return cleaned || "file";
 
@@ -708,6 +708,119 @@
 
 
     /* =========================================================
+       ENVIRONMENT (defensive)
+       ---------------------------------------------------------
+       These are the only functions here that touch the browser
+       environment, and they exist because the APIs they use can
+       legitimately be missing: matchMedia is absent in some
+       embedded webviews and test environments, and localStorage
+       throws when the user blocks site data. A throw inside the
+       boot sequence aborts the rest of it, so every access to
+       those APIs has to be guarded the same way everywhere.
+    ========================================================= */
+
+    function matchMediaSafe(query) {
+
+        try {
+
+            if (typeof window === "undefined" ||
+                typeof window.matchMedia !== "function") {
+                return null;
+            }
+
+            return window.matchMedia(query);
+
+        } catch (error) {
+            return null;
+        }
+
+    }
+
+
+    function prefersReducedMotion() {
+
+        const query =
+            matchMediaSafe(
+                "(prefers-reduced-motion: reduce)"
+            );
+
+        return Boolean(
+            query && query.matches
+        );
+
+    }
+
+
+    function prefersLightColorScheme() {
+
+        const query =
+            matchMediaSafe(
+                "(prefers-color-scheme: light)"
+            );
+
+        return Boolean(
+            query && query.matches
+        );
+
+    }
+
+
+    function storageGet(key) {
+
+        try {
+
+            if (typeof localStorage === "undefined") {
+                return null;
+            }
+
+            return localStorage.getItem(key);
+
+        } catch (error) {
+            return null;
+        }
+
+    }
+
+
+    function storageSet(key, value) {
+
+        try {
+
+            if (typeof localStorage === "undefined") {
+                return false;
+            }
+
+            localStorage.setItem(key, value);
+
+            return true;
+
+        } catch (error) {
+            return false;
+        }
+
+    }
+
+
+    function storageRemove(key) {
+
+        try {
+
+            if (typeof localStorage === "undefined") {
+                return false;
+            }
+
+            localStorage.removeItem(key);
+
+            return true;
+
+        } catch (error) {
+            return false;
+        }
+
+    }
+
+
+    /* =========================================================
        EXPORTS
     ========================================================= */
 
@@ -750,7 +863,14 @@
         toggleFavorite,
         isFavorite,
 
-        getUnlockedAchievementIds
+        getUnlockedAchievementIds,
+
+        matchMediaSafe,
+        prefersReducedMotion,
+        prefersLightColorScheme,
+        storageGet,
+        storageSet,
+        storageRemove
     };
 
 });
