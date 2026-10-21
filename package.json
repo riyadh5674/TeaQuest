@@ -28,7 +28,7 @@
     "@babel/core": "^7.23.9",
     "@babel/preset-env": "^7.23.9",
     "htmlhint": "^1.1.4",
-    "stylelint": "^16.2.1",
+    "stylelint": "^17.16.0",
     "stylelint-config-standard": "^36.0.0",
     "terser": "^5.27.0",
     "clean-css": "^5.3.3",
